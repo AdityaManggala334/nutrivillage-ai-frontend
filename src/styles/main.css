@@ -1,0 +1,90 @@
+@import 'tailwindcss';
+
+/* ------------------------------------------------------------------ */
+/* Design tokens — konsep "Fresh Digital Food-Tech" (SKPL BAB VII)     */
+/* Hijau sebagai warna utama, aksen kuning hasil panen, netral tanah.  */
+/* ------------------------------------------------------------------ */
+@theme {
+  --font-sans: 'Plus Jakarta Sans', 'Segoe UI', ui-sans-serif, system-ui, sans-serif;
+
+  --color-brand-50: #ecfdf5;
+  --color-brand-100: #d1fae5;
+  --color-brand-200: #a7f3d0;
+  --color-brand-300: #6ee7b7;
+  --color-brand-400: #34d399;
+  --color-brand-500: #10b981;
+  --color-brand-600: #059669;
+  --color-brand-700: #047857;
+  --color-brand-800: #065f46;
+  --color-brand-900: #064e3b;
+  --color-brand-950: #022c22;
+
+  --color-harvest-50: #fffbeb;
+  --color-harvest-100: #fef3c7;
+  --color-harvest-200: #fde68a;
+  --color-harvest-300: #fcd34d;
+  --color-harvest-400: #fbbf24;
+  --color-harvest-500: #f59e0b;
+  --color-harvest-600: #d97706;
+  --color-harvest-700: #b45309;
+  --color-harvest-800: #92400e;
+  --color-harvest-900: #78350f;
+
+  --radius-card: 1rem;
+  --shadow-card: 0 1px 2px 0 rgb(6 78 59 / 0.06), 0 8px 24px -8px rgb(6 78 59 / 0.18);
+  --shadow-float: 0 12px 32px -12px rgb(6 78 59 / 0.35);
+}
+
+/* ------------------------------------------------------------------ */
+/* Base                                                                */
+/* ------------------------------------------------------------------ */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-stone-50 font-sans text-stone-800 antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply text-stone-900 font-bold tracking-tight;
+  }
+
+  :focus-visible {
+    @apply outline-brand-600 outline-2 outline-offset-2;
+  }
+
+  ::selection {
+    @apply bg-brand-200 text-brand-900;
+  }
+
+  /* Hormati preferensi pengguna yang sensitif terhadap animasi. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Komponen dasar berbasis utility (dipakai lintas halaman)            */
+/* ------------------------------------------------------------------ */
+@layer components {
+  .app-container {
+    @apply mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8;
+  }
+
+  .visually-hidden {
+    @apply sr-only;
+  }
+}

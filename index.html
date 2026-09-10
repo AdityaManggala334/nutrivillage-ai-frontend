@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#059669" />
+    <meta
+      name="description"
+      content="NutriVillage AI - rekomendasi menu bergizi, terjangkau, dan berbasis pangan lokal Kabupaten Madiun."
+    />
+    <title>NutriVillage AI — Menu Bergizi, Hemat, Pangan Lokal</title>
+    <link rel="icon" href="data:," />
+  </head>
+  <body class="flex min-h-screen flex-col bg-stone-50">
+    <a
+      href="#main-content"
+      class="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:left-3 focus:z-50 focus:rounded-lg focus:bg-brand-600 focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white"
+    >
+      Lewati ke konten utama
+    </a>
+
+    <header id="site-header" class="sticky top-0 z-40 border-b border-stone-200 bg-white/90 backdrop-blur"></header>
+
+    <main id="main-content" tabindex="-1" class="flex-1 focus:outline-none">
+      <div id="app-view"></div>
+    </main>
+
+    <footer id="site-footer" class="border-t border-stone-200 bg-white"></footer>
+
+    <div
+      id="live-region"
+      class="sr-only"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    ></div>
+
+    <noscript>
+      <p class="bg-harvest-100 p-4 text-center text-sm text-harvest-900">
+        Aktifkan JavaScript untuk menggunakan NutriVillage AI.
+      </p>
+    </noscript>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
