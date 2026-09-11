@@ -521,7 +521,7 @@ export const renderLandingPage = (): string => `
             ${renderButton({
               label: 'Pelajari Lebih Lanjut',
               action: 'guest-login',
-              variant: 'outline',
+              intent: 'secondary',
               size: 'lg',
             })}
           </div>
