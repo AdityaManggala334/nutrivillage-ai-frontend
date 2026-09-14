@@ -1,0 +1,203 @@
+@import "tailwindcss";
+
+/* Modul 5: dark mode berbasis class agar bisa dikontrol Zustand theme store. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ------------------------------------------------------------------ */
+/* Design tokens — disamakan dengan proyek Modul 1-4 (Vite):            */
+/* konsep "Fresh Digital Food-Tech" (SKPL BAB VII). Hijau (brand),      */
+/* aksen kuning hasil panen (harvest), netral tanah.                    */
+/* ------------------------------------------------------------------ */
+@theme {
+  --font-sans: var(--font-plus-jakarta), "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --color-brand-50: #ecfdf5;
+  --color-brand-100: #d1fae5;
+  --color-brand-200: #a7f3d0;
+  --color-brand-300: #6ee7b7;
+  --color-brand-400: #34d399;
+  --color-brand-500: #10b981;
+  --color-brand-600: #059669;
+  --color-brand-700: #047857;
+  --color-brand-800: #065f46;
+  --color-brand-900: #064e3b;
+  --color-brand-950: #022c22;
+
+  --color-harvest-50: #fffbeb;
+  --color-harvest-100: #fef3c7;
+  --color-harvest-200: #fde68a;
+  --color-harvest-300: #fcd34d;
+  --color-harvest-400: #fbbf24;
+  --color-harvest-500: #f59e0b;
+  --color-harvest-600: #d97706;
+  --color-harvest-700: #b45309;
+  --color-harvest-800: #92400e;
+  --color-harvest-900: #78350f;
+
+  --radius-card: 1rem;
+  --shadow-card: 0 1px 2px 0 rgb(6 78 59 / 0.06), 0 8px 24px -8px rgb(6 78 59 / 0.18);
+  --shadow-float: 0 12px 32px -12px rgb(6 78 59 / 0.35);
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  .dark {
+    color-scheme: dark;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-stone-50 font-sans text-stone-800 antialiased;
+  }
+
+  .dark body {
+    @apply bg-stone-950 text-stone-100;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-bold tracking-tight text-stone-900;
+  }
+
+  .dark h1,
+  .dark h2,
+  .dark h3,
+  .dark h4 {
+    @apply text-stone-50;
+  }
+
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-brand-600;
+  }
+
+  ::selection {
+    @apply bg-brand-200 text-brand-900;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* Komponen dasar berbasis utility (dipakai lintas halaman). */
+@layer components {
+  .app-container {
+    @apply mx-auto w-full max-w-5xl px-4 sm:px-6 lg:px-8;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Lapisan tema gelap terpusat.                                          */
+/* Memetakan utility netral yang dipakai lintas halaman Modul 1-7 agar   */
+/* mode gelap konsisten tanpa harus menambah `dark:` di setiap elemen.   */
+/* Varian `dark:` eksplisit pada komponen tetap menang bila lebih       */
+/* spesifik, dan pemetaan ini sengaja memakai warna yang sama.           */
+/* ------------------------------------------------------------------ */
+@layer utilities {
+  /* Latar */
+  .dark .bg-white {
+    background-color: var(--color-stone-900);
+  }
+  .dark .bg-stone-50 {
+    background-color: var(--color-stone-950);
+  }
+  .dark .bg-stone-100 {
+    background-color: var(--color-stone-800);
+  }
+  .dark .bg-stone-200 {
+    background-color: var(--color-stone-700);
+  }
+  .dark .bg-brand-50 {
+    background-color: color-mix(in srgb, var(--color-brand-950) 55%, transparent);
+  }
+  .dark .bg-brand-100 {
+    background-color: color-mix(in srgb, var(--color-brand-900) 70%, transparent);
+  }
+  .dark .bg-harvest-50 {
+    background-color: color-mix(in srgb, var(--color-harvest-900) 35%, transparent);
+  }
+  .dark .bg-harvest-100 {
+    background-color: color-mix(in srgb, var(--color-harvest-800) 55%, transparent);
+  }
+
+  /* Teks */
+  .dark .text-stone-900 {
+    color: var(--color-stone-50);
+  }
+  .dark .text-stone-800 {
+    color: var(--color-stone-100);
+  }
+  .dark .text-stone-700 {
+    color: var(--color-stone-200);
+  }
+  .dark .text-stone-600 {
+    color: var(--color-stone-300);
+  }
+  .dark .text-stone-500 {
+    color: var(--color-stone-400);
+  }
+  .dark .text-stone-400 {
+    color: var(--color-stone-500);
+  }
+  .dark .text-stone-300 {
+    color: var(--color-stone-600);
+  }
+  .dark .text-brand-800 {
+    color: var(--color-brand-200);
+  }
+  .dark .text-brand-700 {
+    color: var(--color-brand-300);
+  }
+  .dark .text-brand-600 {
+    color: var(--color-brand-400);
+  }
+  .dark .text-harvest-900 {
+    color: var(--color-harvest-200);
+  }
+  .dark .text-harvest-800 {
+    color: var(--color-harvest-200);
+  }
+  .dark .text-harvest-600 {
+    color: var(--color-harvest-400);
+  }
+
+  /* Garis & ring */
+  .dark .border-stone-100 {
+    border-color: var(--color-stone-800);
+  }
+  .dark .border-stone-200 {
+    border-color: var(--color-stone-800);
+  }
+  .dark .border-brand-100 {
+    border-color: var(--color-brand-900);
+  }
+  .dark .border-brand-200 {
+    border-color: var(--color-brand-800);
+  }
+  .dark .ring-stone-200 {
+    --tw-ring-color: var(--color-stone-800);
+  }
+  .dark .divide-stone-100 > * + * {
+    border-color: var(--color-stone-800);
+  }
+  .dark .divide-stone-200 > * + * {
+    border-color: var(--color-stone-800);
+  }
+}
