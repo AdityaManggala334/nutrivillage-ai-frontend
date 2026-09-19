@@ -1,10 +1,19 @@
 "use client";
 
-import { CalendarCheck, Plus, RefreshCw, Trash2, X } from "lucide-react";
+import { CalendarCheck, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { ErrorState } from "@/components/error-state";
 import { ShoppingListPanel } from "@/components/shopping-list-panel";
-import { Badge, Button, Skeleton } from "@/components/ui";
+import {
+  Badge,
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  Skeleton,
+} from "@/components/ui";
 import {
   useAssignMealMutation,
   useGenerateShoppingListMutation,
@@ -20,7 +29,7 @@ import {
   MEAL_SLOT_ICONS,
   MEAL_SLOT_LABELS,
 } from "@/lib/constants";
-import { cn, formatRupiah } from "@/lib/utils";
+import { formatRupiah } from "@/lib/utils";
 import type { DayOfWeek, MealPlanEntry, MealSlot, ShoppingList } from "@/schemas/domain";
 import { useMealPlannerStore, type SlotTarget } from "@/stores/meal-planner-store";
 
@@ -41,9 +50,6 @@ export function MealPlannerBoard() {
   const pickerTarget = useMealPlannerStore((state) => state.pickerTarget);
   const openPicker = useMealPlannerStore((state) => state.openPicker);
   const closePicker = useMealPlannerStore((state) => state.closePicker);
-  const draggingRecipeId = useMealPlannerStore((state) => state.draggingRecipeId);
-  const startDrag = useMealPlannerStore((state) => state.startDrag);
-  const endDrag = useMealPlannerStore((state) => state.endDrag);
 
   const entries = mealPlan.data?.entries ?? [];
 
@@ -124,22 +130,10 @@ export function MealPlannerBoard() {
             <div className="space-y-2">
               {MEAL_SLOTS.map((slot) => {
                 const entry = findEntry(day, slot);
-                const isDropTarget = draggingRecipeId !== null;
                 return (
                   <div
                     key={slot}
-                    onDragOver={(event) => event.preventDefault()}
-                    onDrop={(event) => {
-                      event.preventDefault();
-                      if (draggingRecipeId) assign(draggingRecipeId, { day, slot });
-                      endDrag();
-                    }}
-                    className={cn(
-                      "rounded-xl border p-2.5 transition",
-                      isDropTarget
-                        ? "border-dashed border-brand-400 bg-brand-50/50 dark:bg-brand-950/20"
-                        : "border-stone-200 dark:border-stone-800",
-                    )}
+                    className="rounded-xl border border-stone-200 p-2.5 transition dark:border-stone-800"
                   >
                     <p className="mb-1.5 flex items-center gap-1 text-xs font-medium text-stone-500 dark:text-stone-400">
                       <span aria-hidden="true">{MEAL_SLOT_ICONS[slot]}</span>
@@ -189,32 +183,20 @@ export function MealPlannerBoard() {
       <ShoppingListPanel shoppingList={shoppingList} />
 
       {pickerTarget ? (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label={`Pilih menu untuk ${DAY_LABELS[pickerTarget.day]} ${MEAL_SLOT_LABELS[pickerTarget.slot]}`}
-          className="fixed inset-0 z-50 flex items-end justify-center bg-stone-900/50 p-4 sm:items-center"
+        <Dialog
+          open
+          onOpenChange={(open) => {
+            if (!open) closePicker();
+          }}
         >
-          <div className="max-h-[80vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5 shadow-xl dark:bg-stone-900">
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <div>
-                <h3 className="text-base font-bold text-stone-900 dark:text-stone-50">
-                  Pilih Menu
-                </h3>
-                <p className="text-xs text-stone-500 dark:text-stone-400">
-                  {DAY_LABELS[pickerTarget.day]} • {MEAL_SLOT_LABELS[pickerTarget.slot]} — klik
-                  untuk memilih atau seret ke slot jadwal.
-                </p>
-              </div>
-              <Button
-                intent="ghost"
-                size="icon"
-                aria-label="Tutup pemilih menu"
-                onClick={closePicker}
-              >
-                <X className="size-4" aria-hidden="true" />
-              </Button>
-            </div>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Pilih Menu</DialogTitle>
+              <DialogDescription>
+                {DAY_LABELS[pickerTarget.day]} • {MEAL_SLOT_LABELS[pickerTarget.slot]} — pilih menu
+                untuk dijadwalkan pada slot ini.
+              </DialogDescription>
+            </DialogHeader>
 
             {recipesQuery.isPending ? (
               <div className="space-y-2">
@@ -245,9 +227,6 @@ export function MealPlannerBoard() {
                 <li key={recipe.id}>
                   <button
                     type="button"
-                    draggable
-                    onDragStart={() => startDrag(recipe.id)}
-                    onDragEnd={endDrag}
                     onClick={() => assign(recipe.id, pickerTarget)}
                     className="flex w-full items-center justify-between gap-3 rounded-xl border border-stone-200 px-3 py-2.5 text-left transition hover:border-brand-400 hover:bg-brand-50/60 dark:border-stone-800 dark:hover:bg-brand-950/30"
                   >
@@ -264,8 +243,8 @@ export function MealPlannerBoard() {
                 </li>
               ))}
             </ul>
-          </div>
-        </div>
+          </DialogContent>
+        </Dialog>
       ) : null}
     </div>
   );

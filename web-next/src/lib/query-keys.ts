@@ -32,6 +32,15 @@ export const queryKeys = {
   },
   shoppingList: {
     all: ["shopping-list"] as const,
+    current: () => ["shopping-list", "current"] as const,
     byWeek: (weekId: string) => ["shopping-list", weekId] as const,
+  },
+  account: {
+    all: ["account"] as const,
+    detail: () => ["account", "detail"] as const,
+  },
+  notifications: {
+    all: ["notifications"] as const,
+    list: () => ["notifications", "list"] as const,
   },
 } as const;

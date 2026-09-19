@@ -1,18 +1,14 @@
 import { renderBadge } from '../components/Badge';
 import { renderButton } from '../components/Button';
 import { formatRupiah } from '../components/utils';
-import {
-  type AuthSession,
-  type FamilyProfile,
-  type Recommendation,
-} from '../types/domain';
-import { matchAsyncState, type AsyncState } from '../types/state';
+import type { AuthSession, FamilyProfile, Recommendation } from '../types/domain';
+import { type AsyncState, matchAsyncState } from '../types/state';
 
 export interface DashboardPageOptions {
   readonly session: AuthSession;
   readonly profile: FamilyProfile | null;
   readonly recommendations: AsyncState<readonly Recommendation[]>;
-};
+}
 
 /* =========================================================
  * ICON
@@ -187,13 +183,7 @@ const renderSidebar = (): string => `
         ${renderNavItem('Beranda', 'home', 'navigate-dashboard', true)}
         ${renderNavItem('Explore', 'explore', 'navigate-explore')}
         ${renderNavItem('Meal Planner', 'calendar', 'navigate-meal-planner')}
-        ${renderNavItem(
-          'Daftar Belanja',
-          'cart',
-          'navigate-shopping-list',
-          false,
-          '0',
-        )}
+        ${renderNavItem('Daftar Belanja', 'cart', 'navigate-shopping-list', false, '0')}
       </div>
 
       <p class="mb-2 mt-8 px-3 text-[10px] font-bold uppercase tracking-wider text-stone-400">
@@ -308,9 +298,7 @@ const renderMobileHeader = (session: AuthSession): string => `
  * PROFILE SUMMARY
  * ======================================================= */
 
-const renderProfileSummary = (
-  profile: FamilyProfile | null,
-): string => {
+const renderProfileSummary = (profile: FamilyProfile | null): string => {
   if (!profile) {
     return `
       <div
@@ -343,10 +331,7 @@ const renderProfileSummary = (
     .map((member) => member.name)
     .join(', ');
 
-  const extraMembers =
-    profile.members.length > 3
-      ? ` +${profile.members.length - 3}`
-      : '';
+  const extraMembers = profile.members.length > 3 ? ` +${profile.members.length - 3}` : '';
 
   return `
     <section class="overflow-hidden rounded-2xl border border-stone-200 bg-white">
@@ -458,9 +443,7 @@ const renderProfileSummary = (
  * RECOMMENDATION CARD
  * ======================================================= */
 
-const renderRecommendationCard = (
-  recommendation: Recommendation,
-): string => {
+const renderRecommendationCard = (recommendation: Recommendation): string => {
   const { recipe, scores } = recommendation;
 
   return `
@@ -552,9 +535,7 @@ const renderRecommendationCard = (
  * RECOMMENDATION STATES
  * ======================================================= */
 
-const renderRecommendationLoading = (
-  message: string,
-): string => `
+const renderRecommendationLoading = (message: string): string => `
   <div role="status" aria-live="polite">
 
     <p class="mb-4 text-xs text-stone-500">
@@ -596,10 +577,7 @@ const renderRecommendationLoading = (
   </div>
 `;
 
-const renderRecommendationError = (
-  message: string,
-  retryable: boolean,
-): string => `
+const renderRecommendationError = (message: string, retryable: boolean): string => `
   <div
     role="alert"
     class="
@@ -894,13 +872,9 @@ export const renderDashboardPage = ({
               </div>
 
               ${matchAsyncState(recommendations, {
-                idle: () =>
-                  renderRecommendationLoading(
-                    'Menyiapkan rekomendasi...',
-                  ),
+                idle: () => renderRecommendationLoading('Menyiapkan rekomendasi...'),
 
-                loading: (message) =>
-                  renderRecommendationLoading(message),
+                loading: (message) => renderRecommendationLoading(message),
 
                 success: (data) =>
                   data.length === 0
@@ -913,18 +887,11 @@ export const renderDashboardPage = ({
                           xl:grid-cols-3
                         "
                       >
-                        ${data
-                          .slice(0, 3)
-                          .map(renderRecommendationCard)
-                          .join('')}
+                        ${data.slice(0, 3).map(renderRecommendationCard).join('')}
                       </div>
                     `,
 
-                error: (message, retryable) =>
-                  renderRecommendationError(
-                    message,
-                    retryable,
-                  ),
+                error: (message, retryable) => renderRecommendationError(message, retryable),
               })}
 
             </section>
@@ -994,11 +961,7 @@ export const renderDashboardPage = ({
                   </p>
 
                   <p class="mt-1 text-xl font-bold text-stone-900">
-                    ${
-                      profile
-                        ? formatRupiah(profile.dailyBudget)
-                        : '—'
-                    }
+                    ${profile ? formatRupiah(profile.dailyBudget) : '—'}
                   </p>
                 </div>
 

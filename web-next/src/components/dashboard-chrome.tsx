@@ -10,15 +10,18 @@ import {
   Leaf,
   LogOut,
   Menu,
+  ShieldCheck,
   ShoppingCart,
   User,
 } from "lucide-react";
+import * as Popover from "@radix-ui/react-popover";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { useNotifications } from "@/hooks/use-notifications";
 import { initialsOf, useSession } from "@/hooks/use-session";
-import { cn } from "@/lib/utils";
+import { cn, formatDateId } from "@/lib/utils";
 import { useUIStore } from "@/stores/ui-store";
 
 /**
@@ -46,7 +49,8 @@ const ACTIVITY_LINKS: readonly NavLink[] = [
 ];
 
 const ACCOUNT_LINKS: readonly NavLink[] = [
-  { label: "Profil", href: "/onboarding", icon: User },
+  { label: "Profil", href: "/profile", icon: User },
+  { label: "Notifikasi", href: "/notifications", icon: Bell },
 ];
 
 function NavItem({ item }: { item: NavLink }) {
@@ -145,6 +149,20 @@ export function DashboardSidebar() {
           <NavSection title="Menu" links={MENU_LINKS} />
           <NavSection title="Aktivitas" links={ACTIVITY_LINKS} />
           <NavSection title="Akun" links={ACCOUNT_LINKS} />
+
+          {user?.role === "admin" ? (
+            <div className="mt-8">
+              <p className="mb-2 px-3 text-[10px] font-bold tracking-wider text-stone-400 uppercase">
+                Admin
+              </p>
+              <Link
+                href="/admin"
+                className="flex items-center gap-3 rounded-xl bg-stone-800 px-3 py-2.5 text-sm font-medium text-white transition hover:bg-stone-700"
+              >
+                <ShieldCheck className="size-[19px]" aria-hidden="true" /> Panel Admin
+              </Link>
+            </div>
+          ) : null}
         </nav>
 
         <div className="border-t border-stone-100 p-4">
@@ -178,6 +196,102 @@ export function DashboardSidebar() {
   );
 }
 
+const KIND_DOT: Record<"info" | "success" | "warning", string> = {
+  info: "bg-sky-500",
+  success: "bg-brand-500",
+  warning: "bg-harvest-500",
+};
+
+/** Ikon lonceng + popup notifikasi (Radix Popover). Klik item → /notifications. */
+function NotificationBell() {
+  const { data, isPending, isError } = useNotifications();
+  const notifications = data ?? [];
+  const unread = notifications.filter((item) => !item.read).length;
+
+  return (
+    <Popover.Root>
+      <Popover.Trigger asChild>
+        <button
+          type="button"
+          aria-label="Buka notifikasi"
+          className="relative rounded-lg p-1.5 text-stone-500 transition hover:bg-stone-100 hover:text-stone-800 dark:hover:bg-stone-800"
+        >
+          <Bell className="size-5" aria-hidden="true" />
+          {unread > 0 ? (
+            <span className="absolute top-1 right-1 size-2 rounded-full bg-red-500" />
+          ) : null}
+        </button>
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content
+          align="end"
+          sideOffset={8}
+          className="z-50 w-80 max-w-[calc(100vw-2rem)] rounded-2xl border border-stone-200 bg-white p-2 shadow-xl focus:outline-none dark:border-stone-800 dark:bg-stone-900"
+        >
+          <div className="flex items-center justify-between px-2 py-1.5">
+            <span className="text-sm font-semibold text-stone-800 dark:text-stone-100">
+              Notifikasi
+            </span>
+            <span className="text-[11px] text-stone-400">{unread} belum dibaca</span>
+          </div>
+
+          <div className="max-h-80 overflow-y-auto">
+            {isPending ? (
+              <div className="space-y-2 p-2">
+                {[0, 1, 2].map((index) => (
+                  <div
+                    key={index}
+                    className="h-12 animate-pulse rounded-xl bg-stone-100 dark:bg-stone-800"
+                  />
+                ))}
+              </div>
+            ) : isError ? (
+              <p className="px-3 py-4 text-sm text-red-600">Gagal memuat notifikasi.</p>
+            ) : notifications.length === 0 ? (
+              <p className="px-3 py-6 text-center text-sm text-stone-400">
+                Belum ada notifikasi.
+              </p>
+            ) : (
+              notifications.slice(0, 5).map((item) => (
+                <Popover.Close key={item.id} asChild>
+                  <Link
+                    href="/notifications"
+                    className="flex gap-2.5 rounded-xl px-2 py-2 transition hover:bg-stone-50 dark:hover:bg-stone-800/60"
+                  >
+                    <span
+                      className={cn("mt-1.5 size-2 shrink-0 rounded-full", KIND_DOT[item.kind])}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium text-stone-800 dark:text-stone-100">
+                        {item.title}
+                      </span>
+                      <span className="mt-0.5 line-clamp-2 block text-xs text-stone-500 dark:text-stone-400">
+                        {item.message}
+                      </span>
+                      <span className="mt-0.5 block text-[10px] text-stone-400">
+                        {formatDateId(item.createdAt)}
+                      </span>
+                    </span>
+                  </Link>
+                </Popover.Close>
+              ))
+            )}
+          </div>
+
+          <Popover.Close asChild>
+            <Link
+              href="/notifications"
+              className="mt-1 block rounded-xl px-2 py-2 text-center text-xs font-semibold text-brand-700 transition hover:bg-brand-50 dark:text-brand-300 dark:hover:bg-brand-950/40"
+            >
+              Lihat semua notifikasi
+            </Link>
+          </Popover.Close>
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
+  );
+}
+
 /** Topbar dashboard — versi mobile + desktop. */
 export function DashboardTopbar() {
   const setSidebarOpen = useUIStore((state) => state.setSidebarOpen);
@@ -202,9 +316,7 @@ export function DashboardTopbar() {
           <span className="text-sm font-bold text-stone-900">NutriVillage AI</span>
         </div>
         <div className="flex items-center gap-3">
-          <button type="button" aria-label="Notifikasi" className="relative text-stone-500">
-            <Bell className="size-5" aria-hidden="true" />
-          </button>
+          <NotificationBell />
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-[11px] font-bold text-brand-800">
             {user ? initialsOf(user.name) : "?"}
           </div>
@@ -221,14 +333,7 @@ export function DashboardTopbar() {
         </div>
 
         <div className="flex items-center gap-5">
-          <button
-            type="button"
-            aria-label="Notifikasi"
-            className="relative text-stone-500 hover:text-stone-800"
-          >
-            <Bell className="size-5" aria-hidden="true" />
-            <span className="absolute top-0.5 right-0.5 h-1.5 w-1.5 rounded-full bg-red-500" />
-          </button>
+          <NotificationBell />
           <div className="h-6 w-px bg-stone-200" />
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-[10px] font-bold text-brand-800">

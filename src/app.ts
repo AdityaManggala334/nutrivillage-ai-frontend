@@ -1,21 +1,15 @@
 import { renderButton } from './components/Button';
 import { renderDashboardPage } from './pages/DashboardPage';
 import { renderLandingPage } from './pages/LandingPage';
-import { renderLoginPage, type AuthMode } from './pages/LoginPage';
+import { type AuthMode, renderLoginPage } from './pages/LoginPage';
 import { renderMemberRow, renderOnboardingPage } from './pages/OnboardingPage';
-import { familyProfileFormSchema } from './schemas/profileSchema';
 import { loginSchema, registerSchema } from './schemas/authSchema';
-import {
-  getStoredSession,
-  guestLogin,
-  login,
-  logout,
-  register,
-} from './services/authApi';
+import { familyProfileFormSchema } from './schemas/profileSchema';
+import { getStoredSession, guestLogin, login, logout, register } from './services/authApi';
 import { fetchRecommendations } from './services/menuApi';
 import { getStoredProfile, saveFamilyProfile } from './services/profileApi';
 import type { AuthSession, FamilyProfile, Recommendation } from './types/domain';
-import { asyncIdle, asyncLoading, type AsyncState } from './types/state';
+import { type AsyncState, asyncIdle, asyncLoading } from './types/state';
 
 /* ------------------------------------------------------------------ */
 /* Tipe & state aplikasi                                               */
@@ -216,12 +210,12 @@ const collectMember = (row: HTMLElement): RawMemberForm => ({
 });
 
 const clearErrors = (form: HTMLFormElement): void => {
-  form.querySelectorAll<HTMLElement>('[data-error-for]').forEach((slot) => {
+  for (const slot of form.querySelectorAll<HTMLElement>('[data-error-for]')) {
     slot.textContent = '';
-  });
-  form.querySelectorAll<HTMLElement>('[aria-invalid="true"]').forEach((field) => {
+  }
+  for (const field of form.querySelectorAll<HTMLElement>('[aria-invalid="true"]')) {
     field.removeAttribute('aria-invalid');
-  });
+  }
   const alert = form.querySelector<HTMLElement>('[data-form-alert]');
   if (alert) {
     alert.textContent = '';
@@ -230,7 +224,7 @@ const clearErrors = (form: HTMLFormElement): void => {
 };
 
 const showIssues = (form: HTMLFormElement, issues: readonly ValidationIssue[]): void => {
-  issues.forEach((issue) => {
+  for (const issue of issues) {
     const first = issue.path[0];
     const second = issue.path[1];
     const third = issue.path[2];
@@ -251,7 +245,7 @@ const showIssues = (form: HTMLFormElement, issues: readonly ValidationIssue[]): 
 
     if (slot) slot.textContent = issue.message;
     if (field) field.setAttribute('aria-invalid', 'true');
-  });
+  }
 
   const alert = form.querySelector<HTMLElement>('[data-form-alert]');
   if (alert) {

@@ -81,6 +81,7 @@ export const GOAL_DESCRIPTIONS: Readonly<Record<RecommendationGoal, string>> = {
 export const DEFAULT_WEEK_ID = "pekan-ini";
 
 export const SESSION_COOKIE = "nutrivillage_session";
+export const ROLE_COOKIE = "nutrivillage_role";
 export const THEME_STORAGE_KEY = "nutrivillage-theme";
 export const PROTECTED_ROUTES = [
   "/dashboard",
@@ -89,5 +90,8 @@ export const PROTECTED_ROUTES = [
   "/favorites",
   "/meal-planner",
   "/shopping-list",
+  "/profile",
+  "/notifications",
   "/onboarding",
+  "/admin",
 ] as const;

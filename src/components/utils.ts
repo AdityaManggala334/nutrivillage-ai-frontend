@@ -3,13 +3,7 @@
  * Helper internal komponen: penggabung className dan escaper HTML.
  */
 
-export type ClassValue =
-  | string
-  | number
-  | false
-  | null
-  | undefined
-  | readonly ClassValue[];
+export type ClassValue = string | number | false | null | undefined | readonly ClassValue[];
 
 const flattenClass = (value: ClassValue): string => {
   if (value === false || value === null || value === undefined || value === '') {

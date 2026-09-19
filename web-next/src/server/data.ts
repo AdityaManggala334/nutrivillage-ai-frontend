@@ -4,17 +4,16 @@ import { cache } from "react";
 import { clamp } from "@/lib/utils";
 import type { ExploreFormData } from "@/schemas/explore";
 import type {
-  DayOfWeek,
   HistoryEntry,
   MealPlan,
   MealPlanEntry,
-  MealSlot,
   Recommendation,
   RecommendationGoal,
   Recipe,
   ShoppingItem,
   ShoppingList,
 } from "@/schemas/domain";
+import { toRecommendationId } from "@/types/branded";
 import { MOCK_RECIPES } from "./mock-data";
 
 /**
@@ -132,7 +131,7 @@ const buildRecommendation = (
     seasonScore * weights.season;
 
   return {
-    id: `rekomendasi-${recipe.id}-${rank}`,
+    id: toRecommendationId(`rekomendasi-${recipe.id}-${rank}`),
     recipe,
     scores: {
       nutrition: Math.round(nutritionScore),
@@ -291,13 +290,13 @@ export async function getMealPlan(weekId: string): Promise<MealPlan> {
   };
 }
 
-export async function assignMealPlanEntry(input: {
-  weekId: string;
-  day: DayOfWeek;
-  slot: MealSlot;
-  recipeId: string;
-  note: string;
-}): Promise<MealPlanEntry> {
+/** Utility Type: sebagian field MealPlanEntry + field tambahan untuk input assign. */
+export type AssignMealPlanInput = Pick<MealPlanEntry, "day" | "slot" | "note"> & {
+  readonly weekId: string;
+  readonly recipeId: string;
+};
+
+export async function assignMealPlanEntry(input: AssignMealPlanInput): Promise<MealPlanEntry> {
   await delay(350);
   const recipe = findRecipeSync(input.recipeId);
   if (!recipe) throw new Error("Resep tidak ditemukan");
@@ -365,24 +364,106 @@ const buildShoppingList = (title: string, recipes: readonly Recipe[]): ShoppingL
     id: `belanja-${crypto.randomUUID()}`,
     title,
     items,
+    note: '',
     totalEstimatedCost: items.reduce((total, item) => total + item.estimatedPrice, 0),
     generatedAt: nowIso(),
   };
 };
 
+const recomputeTotal = (list: ShoppingList): ShoppingList => ({
+  ...list,
+  totalEstimatedCost: list.items.reduce((total, item) => total + item.estimatedPrice, 0),
+});
+
+const mergeIntoList = (list: ShoppingList, recipes: readonly Recipe[]): ShoppingList => {
+  const map = new Map(list.items.map((item) => [item.id, item]));
+  for (const recipe of recipes) {
+    for (const ingredient of recipe.ingredients) {
+      const key = `${ingredient.name}__${ingredient.unit}`;
+      const existing = map.get(key);
+      if (existing) {
+        map.set(key, {
+          ...existing,
+          quantity: existing.quantity + ingredient.quantity,
+          estimatedPrice: existing.estimatedPrice + ingredient.estimatedPrice,
+        });
+      } else {
+        map.set(key, {
+          id: key,
+          name: ingredient.name,
+          quantity: ingredient.quantity,
+          unit: ingredient.unit,
+          estimatedPrice: ingredient.estimatedPrice,
+          checked: false,
+        });
+      }
+    }
+  }
+  return recomputeTotal({ ...list, items: [...map.values()], generatedAt: nowIso() });
+};
+
+let shoppingListStore: ShoppingList | null = null;
+
+export function getShoppingListSync(): ShoppingList {
+  if (!shoppingListStore) {
+    shoppingListStore = buildShoppingList(`Daftar Belanja ${WEEK_LABEL}`, []);
+  }
+  return shoppingListStore;
+}
+
+export async function getShoppingList(): Promise<ShoppingList> {
+  await delay(300);
+  return getShoppingListSync();
+}
+
 export async function generateShoppingList(weekId: string): Promise<ShoppingList> {
   await delay(700);
   const entries = mealPlanStore.get(weekId) ?? [];
-  return buildShoppingList(
+  shoppingListStore = buildShoppingList(
     `Daftar Belanja ${WEEK_LABEL}`,
     entries.map((entry) => entry.recipe),
   );
+  return shoppingListStore;
 }
 
-/** FR-15: daftar belanja dari satu resep (hasil Explore / detail resep). */
+/** FR-15: tambahkan bahan dari satu resep (hasil Explore / detail resep) ke daftar belanja. */
 export async function generateShoppingListFromRecipe(recipeId: string): Promise<ShoppingList> {
   await delay(500);
   const recipe = findRecipeSync(recipeId);
   if (!recipe) throw new Error("Resep tidak ditemukan");
-  return buildShoppingList(`Daftar Belanja ${recipe.name}`, [recipe]);
+  const base = shoppingListStore ?? buildShoppingList(`Daftar Belanja ${WEEK_LABEL}`, []);
+  shoppingListStore = mergeIntoList(base, [recipe]);
+  return shoppingListStore;
+}
+
+/** FR-16: centang / batal centang bahan. */
+export async function toggleShoppingItem(itemId: string): Promise<ShoppingList> {
+  await delay(200);
+  const list = getShoppingListSync();
+  shoppingListStore = {
+    ...list,
+    items: list.items.map((item) =>
+      item.id === itemId ? { ...item, checked: !item.checked } : item,
+    ),
+  };
+  return shoppingListStore;
+}
+
+/** FR-16: hapus bahan dari daftar. */
+export async function deleteShoppingItem(itemId: string): Promise<ShoppingList> {
+  await delay(250);
+  const list = getShoppingListSync();
+  shoppingListStore = recomputeTotal({
+    ...list,
+    items: list.items.filter((item) => item.id !== itemId),
+  });
+  return shoppingListStore;
+}
+
+/** FR-17: simpan catatan tambahan pada daftar belanja. */
+export async function updateShoppingNote(note: string): Promise<ShoppingList> {
+  await delay(200);
+  const list = getShoppingListSync();
+  shoppingListStore = { ...list, note };
+  return shoppingListStore;
 }

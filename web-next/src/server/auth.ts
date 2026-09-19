@@ -49,6 +49,7 @@ const usersByEmail = new Map<string, StoredUser>();
 const usersById = new Map<string, StoredUser>();
 const sessions = new Map<string, string>(); // token -> userId
 const profiles = new Map<string, FamilyProfile>(); // userId -> profile
+const phones = new Map<string, string>(); // userId -> nomor HP (FR-18)
 
 /** Seed akun demo agar halaman login bisa langsung dicoba. */
 const seedUser: StoredUser = {
@@ -61,6 +62,18 @@ const seedUser: StoredUser = {
 };
 usersByEmail.set(seedUser.email, seedUser);
 usersById.set(seedUser.id, seedUser);
+
+/** Akun admin demo (RBAC): hanya role admin yang boleh mengakses panel admin. */
+const seedAdmin: StoredUser = {
+  id: "user-admin",
+  name: "Admin NutriVillage",
+  email: "admin@nutrivillage.id",
+  passwordHash: hashPassword("admin12345"),
+  role: "admin",
+  createdAt: new Date().toISOString(),
+};
+usersByEmail.set(seedAdmin.email, seedAdmin);
+usersById.set(seedAdmin.id, seedAdmin);
 
 const createSession = (userId: string): string => {
   const token = `nv-${crypto.randomUUID()}`;
@@ -178,4 +191,43 @@ export async function saveFamilyProfile(
 
 export function getFamilyProfile(userId: string): FamilyProfile | null {
   return profiles.get(userId) ?? null;
+}
+
+/* ------------------------------------------------------------------ */
+/* Data diri pengguna (FR-18)                                          */
+/* ------------------------------------------------------------------ */
+
+export interface UserContact {
+  readonly name: string;
+  readonly email: string;
+  readonly phone: string;
+}
+
+export function getUserContact(userId: string): UserContact | null {
+  const stored = usersById.get(userId);
+  if (!stored) return null;
+  return { name: stored.name, email: stored.email, phone: phones.get(userId) ?? "" };
+}
+
+export async function updateUserContact(
+  userId: string,
+  input: UserContact,
+): Promise<UserContact> {
+  await delay(500);
+  const stored = usersById.get(userId);
+  if (!stored) throw new Error("Pengguna tidak ditemukan");
+
+  const nextEmail = input.email.trim().toLowerCase();
+  if (stored.email !== nextEmail) {
+    usersByEmail.delete(stored.email);
+    stored.email = nextEmail;
+    usersByEmail.set(nextEmail, stored);
+  }
+  stored.name = input.name;
+  phones.set(userId, input.phone);
+  return { name: stored.name, email: stored.email, phone: input.phone };
+}
+
+export function countUsers(): number {
+  return usersById.size;
 }

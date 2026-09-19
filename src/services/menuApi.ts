@@ -1,13 +1,13 @@
 import {
-  toIngredientId,
-  toRecipeId,
-  toRecommendationId,
   type NutritionInfo,
   type Recipe,
   type RecipeIngredient,
   type Recommendation,
+  toIngredientId,
+  toRecipeId,
+  toRecommendationId,
 } from '../types/domain';
-import { asyncError, asyncSuccess, type AsyncState } from '../types/state';
+import { type AsyncState, asyncError, asyncSuccess } from '../types/state';
 import { delay } from './storage';
 
 /* ------------------------------------------------------------------ */
@@ -203,8 +203,7 @@ const buildRecommendation = (recipe: Recipe, rank: number): Recommendation => {
   const budgetScore = clamp(98 - recipe.estimatedCost / 1500, 55, 99);
   const localScore = clamp(94 - rank * 3, 55, 99);
   const seasonScore = clamp(90 - rank * 2, 55, 99);
-  const total =
-    nutritionScore * 0.4 + budgetScore * 0.3 + localScore * 0.15 + seasonScore * 0.15;
+  const total = nutritionScore * 0.4 + budgetScore * 0.3 + localScore * 0.15 + seasonScore * 0.15;
 
   return {
     id: toRecommendationId(`rekomendasi-${recipe.id}-${rank}`),

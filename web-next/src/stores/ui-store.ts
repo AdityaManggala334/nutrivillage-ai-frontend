@@ -30,7 +30,7 @@ export interface UIState {
 }
 
 export const useUIStore = create<UIState>()((set) => ({
-  isSidebarOpen: true,
+  isSidebarOpen: false,
   themeMode: "light",
   activeHistoryFilter: "all",
   searchQuery: "",

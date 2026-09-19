@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { NutritionInfo, Recipe, RecipeIngredient } from "@/schemas/domain";
+import { toRecipeId } from "@/types/branded";
 
 /**
  * Dataset pangan lokal Kabupaten Madiun (mock, sisi server).
@@ -47,6 +48,7 @@ const daysAgoIso = (days: number): string =>
 
 const createRecipe = (seed: RecipeSeed): Recipe => ({
   ...seed,
+  id: toRecipeId(seed.id),
   cookingSteps: [...seed.cookingSteps],
   ingredients: [...seed.ingredients],
   tags: [...seed.tags],

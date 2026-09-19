@@ -11,3 +11,14 @@ export {
 } from "./card";
 export { Input, Textarea, Select, Label, FieldError } from "./input";
 export { Skeleton, RecipeCardSkeleton } from "./skeleton";
+export {
+  Dialog,
+  DialogTrigger,
+  DialogClose,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "./dialog";
+export { Tabs, TabsList, TabsTrigger, TabsContent } from "./tabs";
+export { Switch } from "./switch";

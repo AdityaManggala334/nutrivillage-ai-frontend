@@ -9,14 +9,12 @@ import { resolveAgeGroup } from '../types/domain';
  * daftar alergi/preferensi dipisah dengan koma lalu di-transform ke array.
  */
 
-const commaSeparatedList = z
-  .string()
-  .transform((value) =>
-    value
-      .split(',')
-      .map((item) => item.trim())
-      .filter((item) => item.length > 0),
-  );
+const commaSeparatedList = z.string().transform((value) =>
+  value
+    .split(',')
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0),
+);
 
 export const familyMemberFormSchema = z
   .object({

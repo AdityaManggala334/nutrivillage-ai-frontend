@@ -4,7 +4,7 @@ import { Search, Star, Trash2 } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { RecipeCard } from "@/components/recipe-card";
-import { Button, ButtonLink, Input, RecipeCardSkeleton } from "@/components/ui";
+import { Button, ButtonLink, Input, RecipeCardSkeleton, Tabs, TabsList, TabsTrigger } from "@/components/ui";
 import {
   useDeleteHistoryMutation,
   useHistory,
@@ -54,27 +54,18 @@ export function HistoryList({ lockedFilter }: HistoryListProps) {
             Menampilkan menu favorit
           </p>
         ) : (
-          <div role="tablist" aria-label="Filter riwayat" className="flex gap-1 rounded-xl bg-stone-100 p-1 dark:bg-stone-800">
-            {FILTER_TABS.map((tab) => {
-              const isActive = activeFilter === tab.value;
-              return (
-                <button
-                  key={tab.value}
-                  role="tab"
-                  type="button"
-                  aria-selected={isActive}
-                  onClick={() => setActiveFilter(tab.value)}
-                  className={
-                    isActive
-                      ? "rounded-lg bg-white px-3.5 py-1.5 text-sm font-semibold text-brand-700 shadow-sm dark:bg-stone-900 dark:text-brand-300"
-                      : "rounded-lg px-3.5 py-1.5 text-sm font-medium text-stone-600 hover:text-stone-900 dark:text-stone-300"
-                  }
-                >
+          <Tabs
+            value={activeFilter}
+            onValueChange={(value) => setActiveFilter(value as HistoryFilter)}
+          >
+            <TabsList aria-label="Filter riwayat">
+              {FILTER_TABS.map((tab) => (
+                <TabsTrigger key={tab.value} value={tab.value}>
                   {tab.label}
-                </button>
-              );
-            })}
-          </div>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
         )}
 
         <div className="relative w-full sm:w-72">

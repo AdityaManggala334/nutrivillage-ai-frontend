@@ -62,6 +62,25 @@ export function AuthForm() {
     router.refresh();
   };
 
+  const goToAdmin = () => {
+    router.replace("/admin");
+    router.refresh();
+  };
+
+  /** Mengisi otomatis kredensial akun demo (pengguna / admin). */
+  const fillDemo = (role: "user" | "admin") => {
+    setMode("login");
+    setErrors({});
+    setServerError(null);
+    if (role === "admin") {
+      setLoginEmail("admin@nutrivillage.id");
+      setLoginPassword("admin12345");
+    } else {
+      setLoginEmail("keluarga@nutrivillage.id");
+      setLoginPassword("nutrivillage");
+    }
+  };
+
   const handleLogin = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const result = LoginSchema.safeParse({ email: loginEmail, password: loginPassword });
@@ -72,7 +91,13 @@ export function AuthForm() {
     setErrors({});
     setServerError(null);
     loginMutation.mutate(result.data, {
-      onSuccess: goToOnboarding,
+      onSuccess: (session) => {
+        if (session.user.role === "admin") {
+          goToAdmin();
+        } else {
+          goToOnboarding();
+        }
+      },
       onError: (error) => setServerError(error.message),
     });
   };
@@ -133,6 +158,31 @@ export function AuthForm() {
             >
               Daftar
             </button>
+          </div>
+
+          {/* Info akun demo (untuk pengujian) */}
+          <div className="mt-4 rounded-xl border border-dashed border-brand-300 bg-brand-50/60 p-3 dark:border-brand-800 dark:bg-brand-950/30">
+            <p className="text-xs font-semibold text-brand-800 dark:text-brand-200">
+              Akun Demo
+            </p>
+            <div className="mt-1.5 space-y-1 text-xs text-stone-600 dark:text-stone-300">
+              <p>
+                Pengguna — <span className="font-mono">keluarga@nutrivillage.id</span> /{" "}
+                <span className="font-mono">nutrivillage</span>
+              </p>
+              <p>
+                Admin — <span className="font-mono">admin@nutrivillage.id</span> /{" "}
+                <span className="font-mono">admin12345</span>
+              </p>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Button type="button" size="sm" intent="secondary" onClick={() => fillDemo("user")}>
+                Isi akun Pengguna
+              </Button>
+              <Button type="button" size="sm" intent="outline" onClick={() => fillDemo("admin")}>
+                Isi akun Admin
+              </Button>
+            </div>
           </div>
 
           <div role="tabpanel" aria-label={mode === "login" ? "Form masuk" : "Form pendaftaran"}>

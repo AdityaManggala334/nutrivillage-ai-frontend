@@ -21,8 +21,11 @@ export function SiteHeader() {
         </Link>
         <nav aria-label="Navigasi utama" className="flex items-center gap-1">
           <ThemeToggle />
-          <ButtonLink intent="ghost" size="sm" href="/" className="hidden sm:inline-flex">
-            Beranda
+          <ButtonLink intent="ghost" size="sm" href="/katalog" className="hidden sm:inline-flex">
+            Katalog
+          </ButtonLink>
+          <ButtonLink intent="ghost" size="sm" href="/artikel" className="hidden sm:inline-flex">
+            Artikel
           </ButtonLink>
           <ButtonLink size="sm" href="/login">
             Masuk / Daftar

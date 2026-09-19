@@ -26,11 +26,7 @@ export interface ErrorState {
   readonly retryable: boolean;
 }
 
-export type AsyncState<TData> =
-  | IdleState
-  | LoadingState
-  | SuccessState<TData>
-  | ErrorState;
+export type AsyncState<TData> = IdleState | LoadingState | SuccessState<TData> | ErrorState;
 
 /* ------------------------------------------------------------------ */
 /* Constructors                                                        */
@@ -64,9 +60,8 @@ export const isIdle = <TData>(state: AsyncState<TData>): state is IdleState =>
 export const isLoading = <TData>(state: AsyncState<TData>): state is LoadingState =>
   state.status === 'loading';
 
-export const isSuccess = <TData>(
-  state: AsyncState<TData>,
-): state is SuccessState<TData> => state.status === 'success';
+export const isSuccess = <TData>(state: AsyncState<TData>): state is SuccessState<TData> =>
+  state.status === 'success';
 
 export const isError = <TData>(state: AsyncState<TData>): state is ErrorState =>
   state.status === 'error';

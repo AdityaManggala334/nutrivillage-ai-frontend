@@ -88,9 +88,11 @@ export function ExploreForm({ onGenerate, isLoading }: ExploreFormProps) {
       className="space-y-6"
       noValidate
     >
-      <div className="grid gap-5 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label htmlFor="budget">Anggaran harian keluarga (Rp)</Label>
+      <div className="grid gap-x-5 gap-y-4 sm:grid-cols-2">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="budget" className="block min-h-10">
+            Anggaran harian keluarga (Rp)
+          </Label>
           <Input
             id="budget"
             name="budget"
@@ -109,8 +111,10 @@ export function ExploreForm({ onGenerate, isLoading }: ExploreFormProps) {
           <FieldError id="budget-error">{errors.dailyBudget}</FieldError>
         </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="days">Jumlah hari rencana</Label>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="days" className="block min-h-10">
+            Jumlah hari rencana
+          </Label>
           <Select
             id="days"
             name="days"
@@ -127,8 +131,10 @@ export function ExploreForm({ onGenerate, isLoading }: ExploreFormProps) {
           <FieldError>{errors.days}</FieldError>
         </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="goal">Tujuan / kebutuhan gizi</Label>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="goal" className="block min-h-10">
+            Tujuan / kebutuhan gizi
+          </Label>
           <Select
             id="goal"
             name="goal"
@@ -144,8 +150,10 @@ export function ExploreForm({ onGenerate, isLoading }: ExploreFormProps) {
           <p className="text-xs text-stone-500 dark:text-stone-400">{GOAL_DESCRIPTIONS[goal]}</p>
         </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="location">Lokasi / wilayah</Label>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="location" className="block min-h-10">
+            Lokasi / wilayah
+          </Label>
           <Input
             id="location"
             name="location"

@@ -55,14 +55,7 @@ export type Gender = 'laki-laki' | 'perempuan';
 /** Slot makan pada Meal Planner. */
 export type MealSlot = 'sarapan' | 'makan-siang' | 'makan-malam';
 
-export type DayOfWeek =
-  | 'senin'
-  | 'selasa'
-  | 'rabu'
-  | 'kamis'
-  | 'jumat'
-  | 'sabtu'
-  | 'minggu';
+export type DayOfWeek = 'senin' | 'selasa' | 'rabu' | 'kamis' | 'jumat' | 'sabtu' | 'minggu';
 
 export type RecommendationGoal = 'hemat' | 'seimbang' | 'tinggi-protein' | 'rendah-lemak';
 

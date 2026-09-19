@@ -1,4 +1,4 @@
-import { cva, type VariantProps } from 'class-variance-authority';
+import { type VariantProps, cva } from 'class-variance-authority';
 import { cn, escapeHtml } from './utils';
 
 export const inputVariants = cva(
@@ -104,7 +104,8 @@ export interface SelectOption {
   readonly label: string;
 }
 
-export interface SelectProps extends Omit<InputProps, 'type' | 'inputMode' | 'min' | 'max' | 'step'> {
+export interface SelectProps
+  extends Omit<InputProps, 'type' | 'inputMode' | 'min' | 'max' | 'step'> {
   readonly options: readonly SelectOption[];
 }
 

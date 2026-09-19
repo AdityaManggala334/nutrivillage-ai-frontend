@@ -1,20 +1,12 @@
 import {
-  loginSchema,
-  registerSchema,
   type LoginInput,
   type RegisterInput,
+  loginSchema,
+  registerSchema,
 } from '../schemas/authSchema';
-import { toUserId, type AuthSession, type User } from '../types/domain';
-import { asyncError, asyncSuccess, type AsyncState } from '../types/state';
-import {
-  STORAGE_KEYS,
-  createId,
-  delay,
-  mockHash,
-  readJson,
-  removeKey,
-  writeJson,
-} from './storage';
+import { type AuthSession, type User, toUserId } from '../types/domain';
+import { type AsyncState, asyncError, asyncSuccess } from '../types/state';
+import { STORAGE_KEYS, createId, delay, mockHash, readJson, removeKey, writeJson } from './storage';
 
 interface StoredUser {
   readonly id: string;

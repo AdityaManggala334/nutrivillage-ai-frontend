@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, Trash2 } from "lucide-react";
+import { Loader2, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button, FieldError, Input, Label, Select } from "@/components/ui";
@@ -74,6 +74,7 @@ export function OnboardingFlow() {
   const [members, setMembers] = useState<MemberInput[]>([emptyMember()]);
   const [errors, setErrors] = useState<FormErrors>({});
   const [serverError, setServerError] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const isOnboarded = profileQuery.data?.onboarded === true;
   useEffect(() => {
@@ -117,8 +118,11 @@ export function OnboardingFlow() {
     setServerError(null);
     saveMutation.mutate(payload, {
       onSuccess: () => {
-        router.replace("/dashboard");
-        router.refresh();
+        setIsProcessing(true);
+        window.setTimeout(() => {
+          router.replace("/dashboard");
+          router.refresh();
+        }, 1600);
       },
       onError: (error) => setServerError(error.message),
     });
@@ -126,6 +130,25 @@ export function OnboardingFlow() {
 
   const isForm = step >= MAX_STEP;
   const slide = SLIDES[Math.min(step, SLIDES.length - 1)] ?? SLIDES[0];
+
+  if (isProcessing) {
+    return (
+      <section aria-labelledby="onboarding-title" className="app-container flex justify-center py-24">
+        <div className="w-full max-w-md text-center">
+          <span className="mx-auto flex size-16 items-center justify-center rounded-2xl bg-brand-100 text-brand-700 dark:bg-brand-950 dark:text-brand-300">
+            <Loader2 className="size-8 animate-spin" aria-hidden="true" />
+          </span>
+          <h2 id="onboarding-title" className="mt-6 text-2xl">
+            AI sedang menganalisis profil keluarga
+          </h2>
+          <p className="mt-3 text-sm leading-relaxed text-stone-600 dark:text-stone-300">
+            Menghitung kebutuhan gizi tiap anggota keluarga dan mencocokkan bahan pangan lokal
+            Kabupaten Madiun. Mohon tunggu sebentar...
+          </p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section aria-labelledby="onboarding-title" className="app-container flex justify-center py-14">

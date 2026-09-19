@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { SESSION_COOKIE } from "@/lib/constants";
+import { ROLE_COOKIE, SESSION_COOKIE } from "@/lib/constants";
 import { LoginSchema } from "@/schemas/auth";
 import { authenticateUser } from "@/server/auth";
 import { jsonError, parseJsonBody } from "@/server/http";
 
-/** POST /api/auth/login — FR-02. Menulis cookie session httpOnly. */
+/** POST /api/auth/login — FR-02. Menulis cookie session + role (RBAC). */
 export async function POST(request: Request): Promise<NextResponse> {
   const parsed = await parseJsonBody(request, LoginSchema);
   if (!parsed.ok) return parsed.response;
@@ -15,6 +15,15 @@ export async function POST(request: Request): Promise<NextResponse> {
     response.cookies.set({
       name: SESSION_COOKIE,
       value: session.token,
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 60 * 60 * 8,
+    });
+    response.cookies.set({
+      name: ROLE_COOKIE,
+      value: session.user.role,
       httpOnly: true,
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",

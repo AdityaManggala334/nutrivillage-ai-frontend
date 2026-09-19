@@ -29,7 +29,7 @@ export function RecipeDetail({ recipe }: RecipeDetailProps) {
         <ArrowLeft className="size-4" aria-hidden="true" /> Kembali ke Explore
       </Link>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="space-y-6">
           <RecipeImage
             imageKey={recipe.imageKey}
@@ -49,7 +49,7 @@ export function RecipeDetail({ recipe }: RecipeDetailProps) {
               {recipe.name}
             </h1>
             <p className="max-w-2xl text-stone-600 dark:text-stone-300">{recipe.description}</p>
-            <div className="flex flex-wrap gap-4 text-sm text-stone-600 dark:text-stone-300">
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-stone-600 dark:text-stone-300">
               <span className="inline-flex items-center gap-1.5">
                 <Users className="size-4 text-brand-600" aria-hidden="true" />
                 {recipe.servings} porsi keluarga
@@ -67,7 +67,7 @@ export function RecipeDetail({ recipe }: RecipeDetailProps) {
           <RecipeSteps recipe={recipe} />
         </div>
 
-        <aside className="space-y-6">
+        <aside className="space-y-6 lg:sticky lg:top-6">
           <RecipeIngredients recipe={recipe} />
 
           <Card>

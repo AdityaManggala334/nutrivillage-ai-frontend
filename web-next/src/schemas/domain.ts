@@ -72,6 +72,23 @@ export type RecipeIngredient = z.infer<typeof RecipeIngredientSchema>;
 export type Recipe = z.infer<typeof RecipeSchema>;
 
 /* ------------------------------------------------------------------ */
+/* Utility Types (TypeScript Pick/Omit/Partial) untuk model turunan    */
+/* ------------------------------------------------------------------ */
+
+/** Ringkasan resep (dipakai untuk kartu/list agar tidak membawa seluruh data). */
+export type RecipeSummary = Pick<
+  Recipe,
+  "id" | "name" | "category" | "estimatedCost" | "imageKey" | "imageAlt"
+>;
+
+/** Draf resep tanpa id & biaya (biaya dihitung otomatis dari bahan). */
+export type RecipeDraft = Omit<Recipe, "id" | "estimatedCost">;
+export const RecipeDraftSchema = RecipeSchema.omit({ id: true, estimatedCost: true });
+
+/** Gizi parsial untuk pembaruan sebagian. */
+export type PartialNutrition = Partial<NutritionInfo>;
+
+/* ------------------------------------------------------------------ */
 /* Rekomendasi (FR-10)                                                 */
 /* ------------------------------------------------------------------ */
 
@@ -151,6 +168,8 @@ export const ShoppingListSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1),
   items: z.array(ShoppingItemSchema),
+  /** FR-17: catatan tambahan opsional pada daftar belanja. */
+  note: z.string(),
   totalEstimatedCost: z.number().nonnegative(),
   generatedAt: z.string().min(1),
 });

@@ -1,8 +1,6 @@
-import {
-  familyProfileFormSchema,
-} from '../schemas/profileSchema';
-import { toFamilyMemberId, type FamilyProfile, type UserId } from '../types/domain';
-import { asyncError, asyncSuccess, type AsyncState } from '../types/state';
+import { familyProfileFormSchema } from '../schemas/profileSchema';
+import { type FamilyProfile, type UserId, toFamilyMemberId } from '../types/domain';
+import { type AsyncState, asyncError, asyncSuccess } from '../types/state';
 import { STORAGE_KEYS, createId, delay, readJson, removeKey, writeJson } from './storage';
 
 export const getStoredProfile = (): FamilyProfile | null =>

@@ -53,6 +53,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
     }
   }, [themeMode, isHydrated]);
 
+  // Modul 7: di mode development, Query Client di-expose agar cache bisa
+  // diperiksa dari console browser (mis. staleTime/gcTime tiap query).
+  useEffect(() => {
+    if (process.env.NODE_ENV === "development") {
+      (window as unknown as { __QUERY_CLIENT__?: QueryClient }).__QUERY_CLIENT__ = queryClient;
+    }
+  }, [queryClient]);
+
   return (
     <QueryClientProvider client={queryClient}>
       {children}

@@ -25,6 +25,8 @@ sama, sehingga menjadi **satu aplikasi Next.js utuh**:
 | Bahasa | TypeScript strict (`strict`, `noImplicitAny`, `noUncheckedIndexedAccess`) |
 | Styling | Tailwind CSS v4 (`@theme` design tokens, dark mode class) |
 | Komponen | Class Variance Authority (CVA) + clsx + tailwind-merge |
+| Headless UI | Radix UI (Dialog, Tabs, Switch) — pola shadcn/ui |
+| Tipe lanjutan | Branded Types, Discriminated Unions (`AsyncState`), Utility Types (`Pick`/`Omit`/`Partial`) |
 | Ikon | lucide-react |
 | Validasi | Zod 4 (`z.infer` untuk tipe) |
 | Client UI State | Zustand 5 |
@@ -49,9 +51,13 @@ npm run typecheck # tsc --noEmit
 npm run lint      # eslint
 ```
 
-**Akun demo:** email `keluarga@nutrivillage.id`, password `nutrivillage`.
+**Akun demo:**
+- Pengguna — email `keluarga@nutrivillage.id`, password `nutrivillage`
+- Admin — email `admin@nutrivillage.id`, password `admin12345` (akses panel `/admin`)
+
+Di halaman login tersedia kotak **Akun Demo** beserta tombol isi otomatis untuk kedua akun.
 Halaman `/dashboard`, `/onboarding`, `/explore`, `/history`, `/favorites`,
-`/meal-planner`, dan `/shopping-list` dilindungi
+`/meal-planner`, `/shopping-list`, `/profile`, `/notifications`, dan `/admin` dilindungi
 middleware; pengunjung tanpa cookie akan diarahkan ke `/login`.
 
 ---
@@ -125,7 +131,16 @@ web-next/
 | `/history` | Protected | Riwayat rekomendasi + filter | FR-13, FR-14 |
 | `/favorites` | Protected | Menu favorit (riwayat filter favorit) | FR-20 |
 | `/meal-planner` | Protected | Kalender jadwal masak mingguan | FR-26, FR-27, FR-28 |
-| `/shopping-list` | Protected | Daftar belanja dari jadwal | FR-15, FR-16 |
+| `/shopping-list` | Protected | Checklist belanja + catatan | FR-15, FR-16, FR-17 |
+| `/profile` | Protected | Data diri, data keluarga, preferensi, pengaturan akun | FR-18, FR-19, FR-21 |
+| `/notifications` | Protected | Notifikasi pengguna | FR-21 |
+| `/katalog` | Public (RSC) | Katalog resep umum (guest mode) | FR-03 |
+| `/artikel` · `/artikel/[id]` | Public (RSC) | Artikel gizi | FR-03 |
+| `/admin` | Protected | Dashboard admin (statistik, harga pending, scraper) | FR-22 |
+| `/admin/bahan` · `/admin/nutrisi` · `/admin/menu` | Protected | Data master | FR-22, FR-30 |
+| `/admin/harga` | Protected | Verifikasi & histori harga | FR-23 |
+| `/admin/musim` · `/admin/lokal` | Protected | Data musim & komoditas lokal | FR-22 |
+| `/admin/monitoring` | Protected | Monitoring & log scraper | FR-31, FR-34 |
 
 ### API Route Handlers
 
@@ -135,28 +150,33 @@ web-next/
 | GET | `/api/auth/session` | — |
 | POST | `/api/auth/logout` | — |
 | GET / PUT | `/api/profile` | `familyProfileFormSchema` (422 bila gagal) |
+| GET / PUT | `/api/account` | `AccountSchema` (data diri) |
 | GET | `/api/recipes` \| `/api/recipes/[id]` | — |
 | POST | `/api/recommendations` | `ExploreFormSchema` |
 | GET / POST | `/api/history` | `HistoryFilterSchema` / `SaveHistoryBodySchema` |
 | DELETE / PATCH | `/api/history/[id]` | — |
 | GET / POST / DELETE | `/api/meal-plans` | `AssignMealBodySchema` |
-| POST | `/api/shopping-list` | `{ weekId }` atau `{ recipeId }` |
+| GET / POST / PATCH / DELETE | `/api/shopping-list` | `{ weekId }` / `{ recipeId }` / `{ itemId, checked }` / `{ note }` |
+| GET | `/api/notifications` | — |
+| PATCH | `/api/admin/prices/[id]` | `{ status }` (verifikasi harga) |
 
 ---
 
 ## 5. Pemisahan React Server Components vs Client Components
 
-**42 dari 59 komponen (.tsx) adalah RSC (≈ 71,2%)** — memenuhi target Modul 6 (minimal 70%).
+**59 dari 84 komponen (.tsx) adalah RSC (≈ 70,2%)** — memenuhi target Modul 6 (minimal 70%).
 
-17 Client Components (seluruhnya daun hierarki interaktif):
+25 Client Components (seluruhnya daun hierarki interaktif):
 
 ```
 providers.tsx · theme-toggle.tsx · auth-form.tsx · guest-login-button.tsx
 onboarding-flow.tsx · dashboard-chrome.tsx · dashboard-home.tsx
 explore-client.tsx · explore-form.tsx · recommendation-results.tsx
 save-recipe-button.tsx · recipe-actions.tsx · history-list.tsx
-meal-planner-board.tsx · app/error.tsx · (dashboard)/error.tsx
-recipes/[id]/error.tsx
+meal-planner-board.tsx · shopping-list-client.tsx · profile-settings.tsx
+admin-nav.tsx · admin-topbar.tsx · admin-price-actions.tsx
+ui/dialog.tsx · ui/tabs.tsx · ui/switch.tsx
+app/error.tsx · (dashboard)/error.tsx · recipes/[id]/error.tsx
 ```
 
 Pola yang diterapkan:
@@ -167,7 +187,9 @@ Pola yang diterapkan:
 - **Isolasi `"use client"` di daun**: layout induk tetap RSC.
 - **Nested Layout**: Root Layout → `(dashboard)/layout.tsx` (sidebar/topbar tidak re-render).
 - **Metadata API**: statis di root & tiap halaman, dinamis (`generateMetadata`) di `/recipes/[id]`.
-- **Middleware**: `src/middleware.ts` memeriksa cookie `nutrivillage_session`.
+- **Middleware**: `src/middleware.ts` memeriksa cookie `nutrivillage_session`; untuk rute
+  `/admin` juga memeriksa cookie `nutrivillage_role` (**RBAC** — hanya role admin). Login
+  sebagai admin diarahkan ke `/admin`, pengguna biasa ke `/onboarding`/`/dashboard`.
 
 ---
 
@@ -187,6 +209,27 @@ pada hapus/favorit riwayat.
 
 Semua respons API divalidasi Zod di `lib/api-client.ts` **sebelum** masuk cache TanStack Query.
 
+### 6.1 Cara Memeriksa Query & Cache
+
+1. **React Query Devtools** — jalankan `npm run dev`, buka aplikasi, lalu klik ikon React Query
+   di sudut bawah layar. Panel menampilkan setiap query, `staleTime`/`gcTime`, status
+   (`fresh` / `stale` / `fetching` / `inactive`), data, serta observer-nya. Devtools hanya
+   aktif di mode development.
+2. **Console browser** — Query Client di-expose di mode development:
+   ```js
+   __QUERY_CLIENT__.getQueryCache().getAll().map((q) => ({
+     key: q.queryKey,
+     staleTime: q.options.staleTime,
+     gcTime: q.options.gcTime,
+     state: q.state.status,
+   }));
+   ```
+3. **Tab Network** — selama data masih `fresh` (< 5 menit), berpindah halaman tidak memicu
+   request ulang. Setelah mutasi (simpan/hapus riwayat, assign menu), `invalidateQueries`
+   memicu refetch otomatis tanpa reload.
+4. **Kode** — nilai terpusat: default di `components/providers.tsx`, query key di
+   `lib/query-keys.ts`, dan `staleTime`/`gcTime` per query di tiap file `hooks/use-*.ts`.
+
 ---
 
 ## 7. Dokumentasi Matriks & Laporan
@@ -205,7 +248,7 @@ Semua respons API divalidasi Zod di `lib/api-client.ts` **sebelum** masuk cache 
 **Verifikasi:**
 - `npm run typecheck` (`tsc --noEmit`, strict) → 0 error
 - `npm run lint` (`eslint-config-next`) → 0 error
-- `npm run build` → sukses (10 halaman + 13 Route Handler + middleware)
+- `npm run build` → sukses (23 halaman + 16 Route Handler + middleware)
 - `sonar-project.properties` disediakan; jalankan:
   ```bash
   sonar-scanner -Dproject.settings=sonar-project.properties

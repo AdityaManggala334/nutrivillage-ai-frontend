@@ -195,7 +195,7 @@ export function LandingPage() {
 
               <h1
                 id="hero-title"
-                className="text-5xl leading-tight font-black text-stone-900 lg:text-6xl"
+                className="text-4xl leading-tight font-black text-stone-900 sm:text-5xl lg:text-6xl"
               >
                 Makan Enak, Gizi Oke,{" "}
                 <span className="bg-gradient-to-r from-brand-600 to-brand-400 bg-clip-text text-transparent">
@@ -343,7 +343,7 @@ export function LandingPage() {
             <SectionBadge>FITUR UNGGULAN</SectionBadge>
             <h2
               id="features-title"
-              className="mt-6 mb-4 text-4xl font-black text-stone-900 lg:text-5xl"
+              className="mt-6 mb-4 text-3xl font-black text-stone-900 sm:text-4xl lg:text-5xl"
             >
               Bukan Sekadar Aplikasi Resep
             </h2>
@@ -377,7 +377,7 @@ export function LandingPage() {
             <SectionBadge tone="harvest">CARA KERJA</SectionBadge>
             <h2
               id="howto-title"
-              className="mt-6 mb-4 text-4xl font-black text-stone-900 lg:text-5xl"
+              className="mt-6 mb-4 text-3xl font-black text-stone-900 sm:text-4xl lg:text-5xl"
             >
               Anti Ribet Club. Cuma 3 Langkah.
             </h2>
@@ -426,7 +426,7 @@ export function LandingPage() {
           <div className="grid items-center gap-12 lg:grid-cols-2">
             <div>
               <SectionBadge tone="harvest">MENGAPA MEMILIH KAMI</SectionBadge>
-              <h2 id="why-title" className="mt-6 mb-6 text-4xl font-black lg:text-5xl">
+              <h2 id="why-title" className="mt-6 mb-6 text-3xl font-black sm:text-4xl lg:text-5xl">
                 Dirancang Khusus untuk Keluarga Madiun
               </h2>
               <p className="mb-8 text-lg text-brand-100">
@@ -516,7 +516,7 @@ export function LandingPage() {
             </div>
 
             <div className="relative">
-              <h2 id="cta-title" className="mb-6 text-4xl font-black lg:text-5xl">
+              <h2 id="cta-title" className="mb-6 text-3xl font-black sm:text-4xl lg:text-5xl">
                 Siap Menyusun Menu Keluarga?
               </h2>
               <p className="mx-auto mb-8 max-w-2xl text-xl text-brand-100">
@@ -592,6 +592,8 @@ export function LandingPage() {
                   { label: "Shopping List", href: "/shopping-list" },
                   { label: "Riwayat", href: "/history" },
                   { label: "Menu Favorit", href: "/favorites" },
+                  { label: "Katalog Resep", href: "/katalog" },
+                  { label: "Artikel Gizi", href: "/artikel" },
                 ].map((item) => (
                   <li key={item.label}>
                     <a href={item.href} className="transition-colors hover:text-brand-400">

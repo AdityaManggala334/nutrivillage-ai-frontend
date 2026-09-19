@@ -418,7 +418,10 @@ export const renderLandingPage = (): string => `
           <div class="space-y-4">
             ${[
               { icon: Icons.sparkle, text: 'Rekomendasi personal sesuai kebutuhan gizi keluarga' },
-              { icon: Icons.wallet, text: 'Budget constraint yang ketat, tidak ada menu over-budget' },
+              {
+                icon: Icons.wallet,
+                text: 'Budget constraint yang ketat, tidak ada menu over-budget',
+              },
               { icon: Icons.leaf, text: 'Dukung petani lokal dengan bahan musiman Madiun' },
               { icon: Icons.clock, text: 'Akses mudah dari mana saja, kapan saja' },
             ]

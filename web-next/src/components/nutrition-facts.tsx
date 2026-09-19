@@ -35,14 +35,18 @@ export function NutritionFacts({ nutrition, servings }: NutritionFactsProps) {
         </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        {MACROS.map((macro) => {
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+        {MACROS.map((macro, index) => {
           const value = nutrition[macro.key];
           const percent = Math.min(100, Math.round((value / macro.max) * 100));
+          const isLast = index === MACROS.length - 1;
           return (
             <div
               key={macro.key}
-              className="rounded-xl border border-stone-200 bg-white p-3 dark:border-stone-800 dark:bg-stone-900"
+              className={cn(
+                "rounded-xl border border-stone-200 bg-white p-3 dark:border-stone-800 dark:bg-stone-900",
+                isLast && "col-span-2 sm:col-span-1",
+              )}
             >
               <p className="text-xs text-stone-500 dark:text-stone-400">{macro.label}</p>
               <p className="text-lg font-bold text-stone-900 dark:text-stone-50">
