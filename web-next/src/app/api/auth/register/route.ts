@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { ROLE_COOKIE, SESSION_COOKIE } from "@/lib/constants";
 import { RegisterSchema } from "@/schemas/auth";
 import { registerUser } from "@/server/auth";
-import { jsonError, parseJsonBody } from "@/server/http";
+import { jsonError, parseJsonBody, setSessionCookies } from "@/server/http";
 
 /** POST /api/auth/register — FR-01. Membuat akun + cookie session. */
 export async function POST(request: Request): Promise<NextResponse> {
@@ -15,26 +14,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       email: parsed.data.email,
       password: parsed.data.password,
     });
-    const response = NextResponse.json(session, { status: 201 });
-    response.cookies.set({
-      name: SESSION_COOKIE,
-      value: session.token,
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      maxAge: 60 * 60 * 8,
-    });
-    response.cookies.set({
-      name: ROLE_COOKIE,
-      value: session.user.role,
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      maxAge: 60 * 60 * 8,
-    });
-    return response;
+    return setSessionCookies(NextResponse.json(session, { status: 201 }), session, 60 * 60 * 8);
   } catch (error) {
     return jsonError(error instanceof Error ? error.message : "Gagal mendaftar", 409);
   }
