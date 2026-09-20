@@ -37,17 +37,18 @@ export const removeKey = (key: string): void => {
   window.localStorage.removeItem(key);
 };
 
-export const createId = (prefix: string): string =>
-  `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+/** Generator ID unik berbasis Web Crypto (aman secara kriptografis). */
+export const createId = (prefix: string): string => `${prefix}_${crypto.randomUUID()}`;
 
 /**
- * Hash sederhana (djb2) untuk SIMULASI penyimpanan password.
- * Bukan pengganti bcrypt; hanya agar password tidak disimpan sebagai teks polos.
+ * Hash password untuk SIMULASI memakai Web Crypto (SHA-256 + salt demo).
+ * Catatan: pada aplikasi produksi, hashing password wajib dilakukan di sisi
+ * server dengan algoritma lambat seperti bcrypt/argon2, bukan di browser.
  */
-export const mockHash = (value: string): string => {
-  let hash = 5381;
-  for (let index = 0; index < value.length; index += 1) {
-    hash = (hash * 33) ^ value.charCodeAt(index);
-  }
-  return (hash >>> 0).toString(16).padStart(8, '0');
+export const mockHash = async (value: string): Promise<string> => {
+  const data = new TextEncoder().encode(`nvai-demo-salt:${value}`);
+  const digest = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
 };

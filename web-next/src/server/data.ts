@@ -35,6 +35,26 @@ const daysAgo = (days: number): string => {
   return date.toISOString();
 };
 
+interface DataStores {
+  historyStore: HistoryEntry[];
+  mealPlanStore: Map<string, MealPlanEntry[]>;
+  shoppingListStore: ShoppingList | null;
+}
+
+/**
+ * Store di `globalThis` agar dibagi oleh SELURUH Route Handler dalam satu
+ * proses (mencegah data hilang saat modul di-instantiate terpisah per route).
+ */
+const globalForData = globalThis as unknown as { __nutrivillageData?: DataStores };
+
+const dataStores: DataStores =
+  globalForData.__nutrivillageData ??
+  (globalForData.__nutrivillageData = {
+    historyStore: [],
+    mealPlanStore: new Map<string, MealPlanEntry[]>(),
+    shoppingListStore: null,
+  });
+
 /* ------------------------------------------------------------------ */
 /* Resep                                                               */
 /* ------------------------------------------------------------------ */
@@ -167,32 +187,36 @@ export async function generateRecommendations(
 /* Riwayat (FR-12, FR-13, FR-14) — penyimpanan in-memory               */
 /* ------------------------------------------------------------------ */
 
-const historyStore: HistoryEntry[] = [
-  {
-    id: "riwayat-seed-1",
-    kind: "recommendation",
-    recipe: MOCK_RECIPES[0]!,
-    savedAt: daysAgo(2),
-    favorite: true,
-    note: "Favorit keluarga, sambal pecelnya ditambah.",
-  },
-  {
-    id: "riwayat-seed-2",
-    kind: "recommendation",
-    recipe: MOCK_RECIPES[4]!,
-    savedAt: daysAgo(20),
-    favorite: false,
-    note: "",
-  },
-  {
-    id: "riwayat-seed-3",
-    kind: "meal-plan",
-    recipe: MOCK_RECIPES[3]!,
-    savedAt: daysAgo(40),
-    favorite: false,
-    note: "Dijadwalkan untuk makan malam.",
-  },
-];
+const historyStore = dataStores.historyStore;
+
+if (historyStore.length === 0) {
+  historyStore.push(
+    {
+      id: "riwayat-seed-1",
+      kind: "recommendation",
+      recipe: MOCK_RECIPES[0]!,
+      savedAt: daysAgo(2),
+      favorite: true,
+      note: "Favorit keluarga, sambal pecelnya ditambah.",
+    },
+    {
+      id: "riwayat-seed-2",
+      kind: "recommendation",
+      recipe: MOCK_RECIPES[4]!,
+      savedAt: daysAgo(20),
+      favorite: false,
+      note: "",
+    },
+    {
+      id: "riwayat-seed-3",
+      kind: "meal-plan",
+      recipe: MOCK_RECIPES[3]!,
+      savedAt: daysAgo(40),
+      favorite: false,
+      note: "Dijadwalkan untuk makan malam.",
+    },
+  );
+}
 
 export type HistoryFilter = "all" | "favorite" | "month";
 
@@ -257,27 +281,26 @@ export async function toggleHistoryFavorite(id: string): Promise<HistoryEntry> {
 /* Meal Planner (FR-26, FR-27, FR-28) — penyimpanan in-memory          */
 /* ------------------------------------------------------------------ */
 
-const mealPlanStore = new Map<string, MealPlanEntry[]>([
-  [
-    "pekan-ini",
-    [
-      {
-        id: "meal-seed-1",
-        day: "senin",
-        slot: "sarapan",
-        recipe: MOCK_RECIPES[6]!,
-        note: "",
-      },
-      {
-        id: "meal-seed-2",
-        day: "selasa",
-        slot: "makan-malam",
-        recipe: MOCK_RECIPES[5]!,
-        note: "",
-      },
-    ],
-  ],
-]);
+const mealPlanStore = dataStores.mealPlanStore;
+
+if (mealPlanStore.size === 0) {
+  mealPlanStore.set("pekan-ini", [
+    {
+      id: "meal-seed-1",
+      day: "senin",
+      slot: "sarapan",
+      recipe: MOCK_RECIPES[6]!,
+      note: "",
+    },
+    {
+      id: "meal-seed-2",
+      day: "selasa",
+      slot: "makan-malam",
+      recipe: MOCK_RECIPES[5]!,
+      note: "",
+    },
+  ]);
+}
 
 const WEEK_LABEL = "Pekan Ini (Senin - Minggu)";
 
@@ -402,13 +425,11 @@ const mergeIntoList = (list: ShoppingList, recipes: readonly Recipe[]): Shopping
   return recomputeTotal({ ...list, items: [...map.values()], generatedAt: nowIso() });
 };
 
-let shoppingListStore: ShoppingList | null = null;
-
 export function getShoppingListSync(): ShoppingList {
-  if (!shoppingListStore) {
-    shoppingListStore = buildShoppingList(`Daftar Belanja ${WEEK_LABEL}`, []);
+  if (!dataStores.shoppingListStore) {
+    dataStores.shoppingListStore = buildShoppingList(`Daftar Belanja ${WEEK_LABEL}`, []);
   }
-  return shoppingListStore;
+  return dataStores.shoppingListStore;
 }
 
 export async function getShoppingList(): Promise<ShoppingList> {
@@ -419,11 +440,11 @@ export async function getShoppingList(): Promise<ShoppingList> {
 export async function generateShoppingList(weekId: string): Promise<ShoppingList> {
   await delay(700);
   const entries = mealPlanStore.get(weekId) ?? [];
-  shoppingListStore = buildShoppingList(
+  dataStores.shoppingListStore = buildShoppingList(
     `Daftar Belanja ${WEEK_LABEL}`,
     entries.map((entry) => entry.recipe),
   );
-  return shoppingListStore;
+  return dataStores.shoppingListStore;
 }
 
 /** FR-15: tambahkan bahan dari satu resep (hasil Explore / detail resep) ke daftar belanja. */
@@ -431,39 +452,39 @@ export async function generateShoppingListFromRecipe(recipeId: string): Promise<
   await delay(500);
   const recipe = findRecipeSync(recipeId);
   if (!recipe) throw new Error("Resep tidak ditemukan");
-  const base = shoppingListStore ?? buildShoppingList(`Daftar Belanja ${WEEK_LABEL}`, []);
-  shoppingListStore = mergeIntoList(base, [recipe]);
-  return shoppingListStore;
+  const base = dataStores.shoppingListStore ?? buildShoppingList(`Daftar Belanja ${WEEK_LABEL}`, []);
+  dataStores.shoppingListStore = mergeIntoList(base, [recipe]);
+  return dataStores.shoppingListStore;
 }
 
 /** FR-16: centang / batal centang bahan. */
 export async function toggleShoppingItem(itemId: string): Promise<ShoppingList> {
   await delay(200);
   const list = getShoppingListSync();
-  shoppingListStore = {
+  dataStores.shoppingListStore = {
     ...list,
     items: list.items.map((item) =>
       item.id === itemId ? { ...item, checked: !item.checked } : item,
     ),
   };
-  return shoppingListStore;
+  return dataStores.shoppingListStore;
 }
 
 /** FR-16: hapus bahan dari daftar. */
 export async function deleteShoppingItem(itemId: string): Promise<ShoppingList> {
   await delay(250);
   const list = getShoppingListSync();
-  shoppingListStore = recomputeTotal({
+  dataStores.shoppingListStore = recomputeTotal({
     ...list,
     items: list.items.filter((item) => item.id !== itemId),
   });
-  return shoppingListStore;
+  return dataStores.shoppingListStore;
 }
 
 /** FR-17: simpan catatan tambahan pada daftar belanja. */
 export async function updateShoppingNote(note: string): Promise<ShoppingList> {
   await delay(200);
   const list = getShoppingListSync();
-  shoppingListStore = { ...list, note };
-  return shoppingListStore;
+  dataStores.shoppingListStore = { ...list, note };
+  return dataStores.shoppingListStore;
 }

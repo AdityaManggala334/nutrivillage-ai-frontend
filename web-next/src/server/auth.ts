@@ -1,5 +1,6 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
 import { SESSION_COOKIE } from "@/lib/constants";
 import { UserSchema, type User } from "@/schemas/auth";
 import {
@@ -26,15 +27,12 @@ interface StoredUser {
   createdAt: string;
 }
 
-/** Hash sederhana (demo saja, bukan untuk produksi). */
-const hashPassword = (password: string): string => {
-  let hash = 0;
-  for (let index = 0; index < password.length; index += 1) {
-    hash = (hash << 5) - hash + password.charCodeAt(index);
-    hash |= 0;
-  }
-  return `nv-${Math.abs(hash).toString(36)}`;
-};
+/**
+ * Hash password untuk SIMULASI memakai SHA-256 (Node crypto) + salt demo.
+ * Pada aplikasi produksi, gunakan algoritma lambat seperti bcrypt/argon2.
+ */
+const hashPassword = (password: string): string =>
+  createHash("sha256").update(`nutrivillage-salt:${password}`).digest("hex");
 
 const toUser = (stored: StoredUser): User =>
   UserSchema.parse({
@@ -45,11 +43,33 @@ const toUser = (stored: StoredUser): User =>
     createdAt: stored.createdAt,
   });
 
-const usersByEmail = new Map<string, StoredUser>();
-const usersById = new Map<string, StoredUser>();
-const sessions = new Map<string, string>(); // token -> userId
-const profiles = new Map<string, FamilyProfile>(); // userId -> profile
-const phones = new Map<string, string>(); // userId -> nomor HP (FR-18)
+interface AuthStores {
+  usersByEmail: Map<string, StoredUser>;
+  usersById: Map<string, StoredUser>;
+  sessions: Map<string, string>;
+  profiles: Map<string, FamilyProfile>;
+  phones: Map<string, string>;
+}
+
+/**
+ * Store disimpan di `globalThis` agar dibagi oleh SELURUH Route Handler dalam
+ * satu proses. Tanpa ini, modul bisa di-instantiate terpisah per route
+ * (terutama saat dev/on-demand compile) sehingga sesi login tidak terlihat oleh
+ * route lain (mis. PUT /api/profile) dan muncul "Sesi tidak valid".
+ */
+const globalForAuth = globalThis as unknown as { __nutrivillageAuth?: AuthStores };
+
+const stores: AuthStores =
+  globalForAuth.__nutrivillageAuth ??
+  (globalForAuth.__nutrivillageAuth = {
+    usersByEmail: new Map<string, StoredUser>(),
+    usersById: new Map<string, StoredUser>(),
+    sessions: new Map<string, string>(),
+    profiles: new Map<string, FamilyProfile>(),
+    phones: new Map<string, string>(),
+  });
+
+const { usersByEmail, usersById, sessions, profiles, phones } = stores;
 
 /** Seed akun demo agar halaman login bisa langsung dicoba. */
 const seedUser: StoredUser = {
@@ -60,8 +80,6 @@ const seedUser: StoredUser = {
   role: "user",
   createdAt: new Date().toISOString(),
 };
-usersByEmail.set(seedUser.email, seedUser);
-usersById.set(seedUser.id, seedUser);
 
 /** Akun admin demo (RBAC): hanya role admin yang boleh mengakses panel admin. */
 const seedAdmin: StoredUser = {
@@ -72,8 +90,12 @@ const seedAdmin: StoredUser = {
   role: "admin",
   createdAt: new Date().toISOString(),
 };
-usersByEmail.set(seedAdmin.email, seedAdmin);
-usersById.set(seedAdmin.id, seedAdmin);
+
+// Seed idempoten (aman dijalankan ulang saat modul dievaluasi berkali-kali).
+for (const seed of [seedUser, seedAdmin]) {
+  usersByEmail.set(seed.email, seed);
+  usersById.set(seed.id, seed);
+}
 
 const createSession = (userId: string): string => {
   const token = `nv-${crypto.randomUUID()}`;

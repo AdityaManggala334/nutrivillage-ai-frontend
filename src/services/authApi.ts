@@ -53,7 +53,7 @@ export const login = async (input: LoginInput): Promise<AsyncState<AuthSession>>
   const email = parsed.data.email.trim().toLowerCase();
   const found = readUsers().find((user) => user.email.toLowerCase() === email);
 
-  if (!found || found.passwordHash !== mockHash(parsed.data.password)) {
+  if (!found || found.passwordHash !== (await mockHash(parsed.data.password))) {
     return asyncError('Email atau password salah.', false);
   }
 
@@ -82,7 +82,7 @@ export const register = async (input: RegisterInput): Promise<AsyncState<AuthSes
     id: createId('user'),
     name: parsed.data.name,
     email,
-    passwordHash: mockHash(parsed.data.password),
+    passwordHash: await mockHash(parsed.data.password),
     role: 'user',
     createdAt: new Date().toISOString(),
   };
