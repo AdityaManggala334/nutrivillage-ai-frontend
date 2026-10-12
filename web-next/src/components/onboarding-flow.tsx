@@ -136,6 +136,19 @@ export function OnboardingFlow() {
   const isForm = step >= MAX_STEP;
   const slide = SLIDES[Math.min(step, SLIDES.length - 1)] ?? SLIDES[0];
 
+  // Saat profil masih dimuat, tampilkan indikator agar pengguna yang sudah
+  // onboarding tidak "terlihat masuk onboarding lagi" (lalu dialihkan ke dashboard).
+  if (profileQuery.isLoading) {
+    return (
+      <section className="app-container flex justify-center py-24" aria-busy="true">
+        <div className="flex items-center gap-2 text-sm text-stone-500" role="status">
+          <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+          Memeriksa data akun…
+        </div>
+      </section>
+    );
+  }
+
   if (isProcessing) {
     return (
       <section aria-labelledby="onboarding-title" className="app-container flex justify-center py-24">

@@ -9,10 +9,6 @@ import {
   type UserRole,
 } from "@/schemas/auth";
 import {
-  familyProfileFormSchema,
-  type FamilyProfile,
-} from "@/schemas/profile";
-import {
   backendLogin,
   backendRegister,
   backendUserCount,
@@ -20,13 +16,12 @@ import {
 } from "@/server/backend-api";
 
 /**
- * Autentikasi sisi server (FR-01, FR-02, FR-03, FR-05).
+ * Autentikasi sisi server (FR-01).
  *
- * Registrasi & login sekarang memakai backend FastAPI + MySQL (lihat
+ * Registrasi & login memakai backend FastAPI + MySQL (lihat
  * `server/backend-api.ts`). Verifikasi sesi dilakukan dengan memvalidasi JWT
- * secara sinkron (HS256) agar tetap kompatibel dengan pemanggil yang bersifat
- * sinkron (Route Handler, Server Component, rate limiter). Data profil keluarga
- * masih disimpan in-memory pada fase ini.
+ * secara sinkron (HS256). Profil keluarga (FR-02) kini tersimpan di database
+ * melalui route `/api/profile`.
  */
 
 const JWT_SECRET = process.env.JWT_SECRET ?? "nutrivillage-dev-secret-change-me";
@@ -53,14 +48,12 @@ interface AuthStores {
   usersByEmail: Map<string, StoredUser>;
   usersById: Map<string, StoredUser>;
   sessions: Map<string, string>;
-  profiles: Map<string, FamilyProfile>;
   phones: Map<string, string>;
 }
 
 /**
  * Store in-memory pada `globalThis` agar dibagi seluruh Route Handler dalam satu
- * proses (profil keluarga, data diri, dan sesi tamu). Data akun persisten ada di
- * MySQL melalui FastAPI.
+ * proses (data diri & sesi tamu). Data akun persisten ada di MySQL via FastAPI.
  */
 const globalForAuth = globalThis as unknown as { __nutrivillageAuth?: AuthStores };
 
@@ -70,11 +63,10 @@ const stores: AuthStores =
     usersByEmail: new Map<string, StoredUser>(),
     usersById: new Map<string, StoredUser>(),
     sessions: new Map<string, string>(),
-    profiles: new Map<string, FamilyProfile>(),
     phones: new Map<string, string>(),
   });
 
-const { usersByEmail, usersById, sessions, profiles, phones } = stores;
+const { usersByEmail, usersById, sessions, phones } = stores;
 
 /** Menyimpan salinan user (dari JWT/login) agar `getUserContact` dapat membacanya. */
 const cacheUser = (user: User): void => {
@@ -227,43 +219,6 @@ export function getSessionToken(request: Request): string | null {  const header
 export function getUserIdFromRequest(request: Request): string {
   const user = getUserByToken(getSessionToken(request));
   return user?.id ?? "anon";
-}
-
-export async function saveFamilyProfile(
-  userId: string,
-  rawInput: unknown,
-): Promise<FamilyProfile> {
-  const parsed = familyProfileFormSchema.safeParse(rawInput);
-  if (!parsed.success) {
-    throw new Error("Data keluarga belum valid. Periksa kembali isian Anda.");
-  }
-
-  const profile: FamilyProfile = {
-    userId,
-    dailyBudget: parsed.data.dailyBudget,
-    region: parsed.data.region,
-    members: parsed.data.members.map((member) => ({
-      id: `member-${crypto.randomUUID()}`,
-      name: member.name,
-      age: member.age,
-      ageGroup: member.ageGroup,
-      gender: member.gender,
-      weightKg: member.weightKg,
-      activityLevel: member.activityLevel,
-      allergies: member.allergies,
-    })),
-    preferences: parsed.data.preferences,
-    avoidedIngredients: parsed.data.avoidedIngredients,
-    onboarded: true,
-    updatedAt: new Date().toISOString(),
-  };
-
-  profiles.set(userId, profile);
-  return profile;
-}
-
-export function getFamilyProfile(userId: string): FamilyProfile | null {
-  return profiles.get(userId) ?? null;
 }
 
 /* ------------------------------------------------------------------ */

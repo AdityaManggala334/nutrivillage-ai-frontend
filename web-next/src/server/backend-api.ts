@@ -461,3 +461,64 @@ export async function backendAdminDelete(
 ): Promise<void> {
   await backendFetch<undefined>(`/admin/${resource}/${id}`, { method: "DELETE" }, token);
 }
+
+/* ------------------------------------------------------------------ */
+/* Profil keluarga (FR-02)                                             */
+/* ------------------------------------------------------------------ */
+
+export interface BackendFamilyMember {
+  readonly id: number;
+  readonly name: string | null;
+  readonly age: number;
+  readonly age_group: string | null;
+  readonly gender: string | null;
+  readonly weight_kg: number;
+  readonly activity_level: string;
+  readonly allergies: string[];
+}
+
+export interface BackendFamilyProfile {
+  readonly user_id: number;
+  readonly daily_budget: number;
+  readonly region: string;
+  readonly preferences: string[];
+  readonly avoided_ingredients: string[];
+  readonly onboarded: boolean;
+  readonly family_count: number;
+  readonly members: BackendFamilyMember[];
+  readonly updated_at: string;
+}
+
+export interface BackendFamilyProfileInput {
+  readonly daily_budget: number;
+  readonly region: string;
+  readonly preferences: string[];
+  readonly avoided_ingredients: string[];
+  readonly onboarded: boolean;
+  readonly members: Array<{
+    readonly name: string | null;
+    readonly age: number;
+    readonly age_group: string;
+    readonly gender: string | null;
+    readonly weight_kg: number;
+    readonly activity_level: string;
+    readonly allergies: string[];
+  }>;
+}
+
+export async function backendGetProfile(
+  token: string,
+): Promise<BackendFamilyProfile | null> {
+  return backendFetch<BackendFamilyProfile | null>("/profile", { method: "GET" }, token);
+}
+
+export async function backendSaveProfile(
+  token: string,
+  input: BackendFamilyProfileInput,
+): Promise<BackendFamilyProfile> {
+  return backendFetch<BackendFamilyProfile>(
+    "/profile",
+    { method: "PUT", body: JSON.stringify(input) },
+    token,
+  );
+}
