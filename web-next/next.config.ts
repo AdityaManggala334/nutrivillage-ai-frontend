@@ -4,6 +4,8 @@ const projectRoot = import.meta.dirname;
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // Output mandiri untuk image Docker (lihat Dockerfile & docker-compose.full.yml).
+  output: "standalone",
   // Modul 6: akar workspace eksplisit (menghindari ambiguitas lockfile).
   outputFileTracingRoot: projectRoot,
   turbopack: {
