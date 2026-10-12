@@ -63,17 +63,17 @@ export function AdminSchools() {
             <caption className="sr-only">Daftar sekolah & petugas</caption>
             <thead className="bg-white/50 text-[11px] tracking-wider text-stone-500 uppercase dark:bg-stone-900/40">
               <tr>
-                <th scope="col" className="px-4 py-3 text-center font-semibold">Sekolah</th>
-                <th scope="col" className="px-4 py-3 text-center font-semibold">Petugas</th>
-                <th scope="col" className="px-4 py-3 text-center font-semibold">Jumlah siswa / jenjang</th>
-                <th scope="col" className="px-4 py-3 text-center font-semibold">Status</th>
+                <th scope="col" className="border-r border-white/40 px-4 py-3 text-center font-semibold last:border-r-0 dark:border-white/10">Sekolah</th>
+                <th scope="col" className="border-r border-white/40 px-4 py-3 text-center font-semibold last:border-r-0 dark:border-white/10">Petugas</th>
+                <th scope="col" className="border-r border-white/40 px-4 py-3 text-center font-semibold last:border-r-0 dark:border-white/10">Jumlah siswa / jenjang</th>
+                <th scope="col" className="border-r border-white/40 px-4 py-3 text-center font-semibold last:border-r-0 dark:border-white/10">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/40 dark:divide-white/10">
               {visible.map((school) => (
                 <tr key={school.id} className="align-top transition hover:bg-white/40 dark:hover:bg-stone-800/40">
-                  <td className="px-4 py-3 text-center">
-                    <div className="flex items-start justify-center gap-2">
+                  <td className="border-r border-white/30 px-4 py-3 last:border-r-0 dark:border-white/10">
+                    <div className="flex items-start gap-2">
                       <SchoolIcon className="mt-0.5 size-4 shrink-0 text-brand-600" aria-hidden="true" />
                       <div className="min-w-0">
                         <p className="font-semibold text-stone-800 dark:text-stone-100">{school.name}</p>
@@ -84,14 +84,14 @@ export function AdminSchools() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-center text-xs text-stone-600 dark:text-stone-300">
+                  <td className="border-r border-white/30 px-4 py-3 text-xs text-stone-600 last:border-r-0 dark:border-white/10 dark:text-stone-300">
                     {school.officerName ?? <span className="text-stone-400">—</span>}
                   </td>
-                  <td className="px-4 py-3 text-center">
+                  <td className="border-r border-white/30 px-4 py-3 last:border-r-0 dark:border-white/10">
                     {school.groups.length === 0 ? (
                       <span className="text-xs text-stone-400">Belum ada kelompok</span>
                     ) : (
-                      <div className="flex flex-wrap justify-center gap-1.5">
+                      <div className="flex flex-wrap gap-1.5">
                         {school.groups.map((group) => (
                           <Badge key={group.id} tone="neutral">
                             {group.level === "lainnya" && group.label
@@ -102,11 +102,11 @@ export function AdminSchools() {
                         ))}
                       </div>
                     )}
-                    <p className="mt-1.5 flex items-center justify-center gap-1 text-xs text-stone-500">
+                    <p className="mt-1.5 flex items-center gap-1 text-xs text-stone-500">
                       <Users className="size-3.5" aria-hidden="true" /> Total {totalStudents(school)} siswa
                     </p>
                   </td>
-                  <td className="px-4 py-3 text-center">
+                  <td className="border-r border-white/30 px-4 py-3 last:border-r-0 dark:border-white/10">
                     <Badge tone={school.isActive ? "brand" : "neutral"}>
                       {school.isActive ? "Aktif" : "Nonaktif"}
                     </Badge>

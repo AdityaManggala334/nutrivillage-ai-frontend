@@ -96,7 +96,7 @@ export function AuthForm() {
     setSuccessMessage(null);
     if (role === "admin") {
       setLoginEmail("admin@nutrivillage.id");
-      setLoginPassword("admin12345");
+      setLoginPassword("AdminVillage123");
     } else if (role === "sppg") {
       setLoginEmail("sppg@nutrivillage.id");
       setLoginPassword("sppg12345");
@@ -210,7 +210,7 @@ export function AuthForm() {
               </p>
               <p>
                 Admin — <span className="font-mono">admin@nutrivillage.id</span> /{" "}
-                <span className="font-mono">admin12345</span>
+                <span className="font-mono">AdminVillage123</span>
               </p>
             </div>
             <div className="mt-2 flex flex-wrap gap-2">

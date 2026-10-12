@@ -396,3 +396,68 @@ export async function backendUpdateUser(
     token,
   );
 }
+
+/* ------------------------------------------------------------------ */
+/* Data master admin (bahan, nutrisi, menu, musim, komoditas lokal)    */
+/* ------------------------------------------------------------------ */
+
+export type AdminMasterResource =
+  | "ingredients"
+  | "nutrition"
+  | "recipes"
+  | "seasons"
+  | "local"
+  | "regions";
+
+export async function backendAdminList(
+  token: string,
+  resource: AdminMasterResource,
+): Promise<unknown[]> {
+  return backendFetch<unknown[]>(`/admin/${resource}`, { method: "GET" }, token);
+}
+
+export async function backendAdminCreate(
+  token: string,
+  resource: AdminMasterResource,
+  body: unknown,
+): Promise<unknown> {
+  return backendFetch<unknown>(
+    `/admin/${resource}`,
+    { method: "POST", body: JSON.stringify(body) },
+    token,
+  );
+}
+
+export async function backendAdminUpdate(
+  token: string,
+  resource: AdminMasterResource,
+  id: number | string,
+  body: unknown,
+): Promise<unknown> {
+  return backendFetch<unknown>(
+    `/admin/${resource}/${id}`,
+    { method: "PATCH", body: JSON.stringify(body) },
+    token,
+  );
+}
+
+export async function backendAdminReplace(
+  token: string,
+  resource: AdminMasterResource,
+  id: number | string,
+  body: unknown,
+): Promise<unknown> {
+  return backendFetch<unknown>(
+    `/admin/${resource}/${id}`,
+    { method: "PUT", body: JSON.stringify(body) },
+    token,
+  );
+}
+
+export async function backendAdminDelete(
+  token: string,
+  resource: AdminMasterResource,
+  id: number | string,
+): Promise<void> {
+  await backendFetch<undefined>(`/admin/${resource}/${id}`, { method: "DELETE" }, token);
+}

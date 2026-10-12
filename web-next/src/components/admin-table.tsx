@@ -39,7 +39,7 @@ export function AdminTable({
                 <th
                   key={head}
                   scope="col"
-                  className="px-4 py-3 text-center text-xs font-semibold tracking-wide text-stone-500 uppercase dark:text-stone-400"
+                  className="border-r border-stone-200 px-4 py-3 text-center text-xs font-semibold tracking-wide text-stone-500 uppercase last:border-r-0 dark:border-stone-700 dark:text-stone-400"
                 >
                   {head}
                 </th>
@@ -62,17 +62,17 @@ const ALIGN_CLASS: Record<"left" | "center" | "right", string> = {
 export function AdminCell({
   children,
   className,
-  align = "center",
+  align = "left",
 }: {
   readonly children: ReactNode;
   readonly className?: string;
-  /** Perataan isi kolom. Default: tengah (simetris). */
+  /** Perataan isi kolom. Default: kiri (header tetap tengah). */
   readonly align?: "left" | "center" | "right";
 }) {
   return (
     <td
       className={cn(
-        "px-4 py-3 align-middle text-stone-700 dark:text-stone-200",
+        "border-r border-stone-100 px-4 py-3 align-middle text-stone-700 last:border-r-0 dark:border-stone-800 dark:text-stone-200",
         ALIGN_CLASS[align],
         className,
       )}
