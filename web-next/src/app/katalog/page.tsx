@@ -14,6 +14,9 @@ export const metadata: Metadata = {
   alternates: { canonical: "/katalog" },
 };
 
+// Data dibaca dari database saat request (bukan saat build).
+export const dynamic = "force-dynamic";
+
 /** FR-03: katalog resep umum untuk pengunjung tanpa daftar (guest mode). */
 export default async function KatalogPage() {
   const recipes = await listRecipes();
@@ -29,11 +32,17 @@ export default async function KatalogPage() {
             description="Pengunjung dapat membaca katalog resep tanpa mendaftar. Untuk menjalankan rekomendasi menu, silakan masuk atau daftar."
             action={<ButtonLink href="/login">Masuk / Daftar</ButtonLink>}
           />
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {recipes.map((recipe) => (
-              <RecipeCard key={recipe.id} recipe={recipe} />
-            ))}
-          </div>
+          {recipes.length === 0 ? (
+            <p className="mt-6 rounded-2xl bg-white/60 px-4 py-8 text-center text-sm text-stone-500 dark:bg-stone-900/40">
+              Belum ada resep pada katalog.
+            </p>
+          ) : (
+            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {recipes.map((recipe) => (
+                <RecipeCard key={recipe.id} recipe={recipe} />
+              ))}
+            </div>
+          )}
         </main>
       </GlassShell>
       <SiteFooter />

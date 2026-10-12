@@ -133,9 +133,11 @@ export function HistoryList({ lockedFilter }: HistoryListProps) {
                 size="sm"
                 aria-pressed={entry.favorite}
                 loading={
-                  favoriteMutation.isPending && favoriteMutation.variables === entry.id
+                  favoriteMutation.isPending && favoriteMutation.variables?.id === entry.id
                 }
-                onClick={() => favoriteMutation.mutate(entry.id)}
+                onClick={() =>
+                  favoriteMutation.mutate({ id: entry.id, favorite: !entry.favorite })
+                }
               >
                 <Star
                   className="size-4"

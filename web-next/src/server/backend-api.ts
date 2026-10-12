@@ -522,3 +522,105 @@ export async function backendSaveProfile(
     token,
   );
 }
+
+/* ------------------------------------------------------------------ */
+/* Katalog resep publik (FR-10)                                        */
+/* ------------------------------------------------------------------ */
+
+export interface BackendRecipeIngredient {
+  readonly id: number;
+  readonly ingredient_id: number | null;
+  readonly name: string;
+  readonly quantity: number;
+  readonly unit: string;
+  readonly estimated_price: number;
+  readonly is_pantry: boolean;
+  readonly note?: string | null;
+}
+
+export interface BackendRecipeNutrition {
+  readonly calories: number;
+  readonly protein: number;
+  readonly carbohydrates: number;
+  readonly fat: number;
+  readonly fiber: number;
+}
+
+export interface BackendRecipe {
+  readonly id: number;
+  readonly name: string;
+  readonly category: string;
+  readonly description: string | null;
+  readonly servings: number;
+  readonly cooking_time_min: number;
+  readonly steps: string[];
+  readonly tags: string[];
+  readonly image_key: string | null;
+  readonly image_alt: string | null;
+  readonly is_local: boolean;
+  readonly in_season: boolean;
+  readonly is_vegetarian: boolean;
+  readonly estimated_cost: number;
+  readonly price_updated_at: string | null;
+  readonly nutrition: BackendRecipeNutrition | null;
+  readonly ingredients: BackendRecipeIngredient[];
+}
+
+export async function backendListRecipes(): Promise<BackendRecipe[]> {
+  return backendFetch<BackendRecipe[]>("/recipes", { method: "GET" });
+}
+
+export async function backendGetRecipe(id: number | string): Promise<BackendRecipe> {
+  return backendFetch<BackendRecipe>(`/recipes/${id}`, { method: "GET" });
+}
+
+/* ------------------------------------------------------------------ */
+/* Riwayat & favorit (FR-04)                                           */
+/* ------------------------------------------------------------------ */
+
+export interface BackendHistoryEntry {
+  readonly id: number;
+  readonly kind: string;
+  readonly note: string;
+  readonly saved_at: string;
+  readonly favorite: boolean;
+  readonly recipe: BackendRecipe | null;
+}
+
+export async function backendListHistory(
+  token: string,
+  filter: string,
+): Promise<BackendHistoryEntry[]> {
+  return backendFetch<BackendHistoryEntry[]>(
+    `/history?filter=${encodeURIComponent(filter)}`,
+    { method: "GET" },
+    token,
+  );
+}
+
+export async function backendSaveHistory(
+  token: string,
+  input: { readonly recipe_id: number; readonly kind: string; readonly note: string },
+): Promise<BackendHistoryEntry> {
+  return backendFetch<BackendHistoryEntry>(
+    "/history",
+    { method: "POST", body: JSON.stringify(input) },
+    token,
+  );
+}
+
+export async function backendDeleteHistory(token: string, id: number | string): Promise<void> {
+  await backendFetch<undefined>(`/history/${id}`, { method: "DELETE" }, token);
+}
+
+export async function backendSetHistoryFavorite(
+  token: string,
+  id: number | string,
+  favorite: boolean,
+): Promise<BackendHistoryEntry> {
+  return backendFetch<BackendHistoryEntry>(
+    `/history/${id}`,
+    { method: "PATCH", body: JSON.stringify({ favorite }) },
+    token,
+  );
+}

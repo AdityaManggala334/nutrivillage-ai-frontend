@@ -80,19 +80,17 @@ export function useToggleFavoriteMutation(filter: HistoryFilter) {
   const listKey = queryKeys.history.list(filter);
 
   return useMutation({
-    mutationFn: (id: string) =>
-      apiSend(`/api/history/${id}`, "PATCH", { favorite: true }, HistoryEntrySchema),
-    onMutate: async (id) => {
+    mutationFn: ({ id, favorite }: { id: string; favorite: boolean }) =>
+      apiSend(`/api/history/${id}`, "PATCH", { favorite }, HistoryEntrySchema),
+    onMutate: async ({ id, favorite }) => {
       await queryClient.cancelQueries({ queryKey: listKey });
       const previous = queryClient.getQueryData<HistoryEntry[]>(listKey);
       queryClient.setQueryData<HistoryEntry[]>(listKey, (old) =>
-        (old ?? []).map((entry) =>
-          entry.id === id ? { ...entry, favorite: !entry.favorite } : entry,
-        ),
+        (old ?? []).map((entry) => (entry.id === id ? { ...entry, favorite } : entry)),
       );
       return { previous };
     },
-    onError: (_error, _id, context) => {
+    onError: (_error, _variables, context) => {
       if (context?.previous) {
         queryClient.setQueryData(listKey, context.previous);
       }

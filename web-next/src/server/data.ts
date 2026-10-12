@@ -4,7 +4,6 @@ import { cache } from "react";
 import { clamp } from "@/lib/utils";
 import type { ExploreFormData } from "@/schemas/explore";
 import type {
-  HistoryEntry,
   MealPlan,
   MealPlanEntry,
   Recommendation,
@@ -14,7 +13,7 @@ import type {
   ShoppingList,
 } from "@/schemas/domain";
 import { toRecommendationId } from "@/types/branded";
-import { MOCK_RECIPES } from "./mock-data";
+import { getRecipeFromDb, listRecipesFromDb } from "@/server/recipes";
 
 /**
  * Lapisan akses data sisi server (mock). Mensimulasikan latensi jaringan,
@@ -29,15 +28,7 @@ const delay = (ms: number): Promise<void> =>
 
 const nowIso = (): string => new Date().toISOString();
 
-const daysAgo = (days: number): string => {
-  const date = new Date();
-  date.setDate(date.getDate() - days);
-  return date.toISOString();
-};
-
 interface DataStores {
-  /** Riwayat per pengguna. */
-  historyByUser: Map<string, HistoryEntry[]>;
   /** Jadwal makan per pengguna+pekan (`userId::weekId`). */
   mealPlanByUser: Map<string, MealPlanEntry[]>;
   /** Daftar belanja per pengguna. */
@@ -54,7 +45,6 @@ const globalForData = globalThis as unknown as { __nutrivillageData?: DataStores
 const dataStores: DataStores =
   globalForData.__nutrivillageData ??
   (globalForData.__nutrivillageData = {
-    historyByUser: new Map<string, HistoryEntry[]>(),
     mealPlanByUser: new Map<string, MealPlanEntry[]>(),
     shoppingByUser: new Map<string, ShoppingList>(),
   });
@@ -64,18 +54,11 @@ const dataStores: DataStores =
 /* ------------------------------------------------------------------ */
 
 export async function listRecipes(): Promise<Recipe[]> {
-  await delay(200);
-  return [...MOCK_RECIPES];
+  return listRecipesFromDb();
 }
 
-/** Sengaja lebih lambat untuk mendemonstrasikan Streaming SSR + Suspense. */
 export async function getRecipeById(id: string): Promise<Recipe | null> {
-  await delay(900);
-  return MOCK_RECIPES.find((recipe) => recipe.id === id) ?? null;
-}
-
-export function findRecipeSync(id: string): Recipe | null {
-  return MOCK_RECIPES.find((recipe) => recipe.id === id) ?? null;
+  return getRecipeFromDb(id);
 }
 
 /**
@@ -177,7 +160,8 @@ export async function generateRecommendations(
 ): Promise<Recommendation[]> {
   await delay(1200);
 
-  const eligible = MOCK_RECIPES.filter(
+  const catalog = await listRecipes();
+  const eligible = catalog.filter(
     (recipe) =>
       recipe.estimatedCost <= data.dailyBudget && !matchesAllergy(recipe, data.allergies),
   );
@@ -190,113 +174,10 @@ export async function generateRecommendations(
 }
 
 /* ------------------------------------------------------------------ */
-/* Riwayat (FR-12, FR-13, FR-14) — penyimpanan in-memory per pengguna  */
+/* Riwayat (FR-12, FR-13, FR-14)                                       */
 /* ------------------------------------------------------------------ */
-
-const HISTORY_SEED: readonly HistoryEntry[] = [
-  {
-    id: "riwayat-seed-1",
-    kind: "recommendation",
-    recipe: MOCK_RECIPES[0]!,
-    savedAt: daysAgo(2),
-    favorite: true,
-    note: "Favorit keluarga, sambal pecelnya ditambah.",
-  },
-  {
-    id: "riwayat-seed-2",
-    kind: "recommendation",
-    recipe: MOCK_RECIPES[4]!,
-    savedAt: daysAgo(20),
-    favorite: false,
-    note: "",
-  },
-  {
-    id: "riwayat-seed-3",
-    kind: "meal-plan",
-    recipe: MOCK_RECIPES[3]!,
-    savedAt: daysAgo(40),
-    favorite: false,
-    note: "Dijadwalkan untuk makan malam.",
-  },
-];
-
-/** Riwayat milik satu pengguna; di-seed sekali saat pertama diakses. */
-const historyFor = (userId: string): HistoryEntry[] => {
-  let list = dataStores.historyByUser.get(userId);
-  if (!list) {
-    list = HISTORY_SEED.map((entry) => ({ ...entry }));
-    dataStores.historyByUser.set(userId, list);
-  }
-  return list;
-};
-
-export type HistoryFilter = "all" | "favorite" | "month";
-
-export async function listHistory(
-  userId: string,
-  filter: HistoryFilter,
-): Promise<HistoryEntry[]> {
-  await delay(500);
-  const store = historyFor(userId);
-  const sorted = [...store].sort(
-    (a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime(),
-  );
-  if (filter === "favorite") return sorted.filter((entry) => entry.favorite);
-  if (filter === "month") {
-    const now = new Date();
-    return sorted.filter((entry) => {
-      const saved = new Date(entry.savedAt);
-      return saved.getMonth() === now.getMonth() && saved.getFullYear() === now.getFullYear();
-    });
-  }
-  return sorted;
-}
-
-export async function saveHistoryEntry(
-  userId: string,
-  input: {
-    recipeId: string;
-    kind: HistoryEntry["kind"];
-    note: string;
-  },
-): Promise<HistoryEntry> {
-  await delay(400);
-  const recipe = findRecipeSync(input.recipeId);
-  if (!recipe) throw new Error("Resep tidak ditemukan");
-
-  const store = historyFor(userId);
-  const existing = store.find(
-    (entry) => entry.recipe.id === recipe.id && entry.kind === input.kind,
-  );
-  if (existing) return existing;
-
-  const entry: HistoryEntry = {
-    id: `riwayat-${crypto.randomUUID()}`,
-    kind: input.kind,
-    recipe,
-    savedAt: nowIso(),
-    favorite: false,
-    note: input.note,
-  };
-  store.unshift(entry);
-  return entry;
-}
-
-export async function deleteHistoryEntry(userId: string, id: string): Promise<{ id: string }> {
-  await delay(300);
-  const store = historyFor(userId);
-  const index = store.findIndex((entry) => entry.id === id);
-  if (index >= 0) store.splice(index, 1);
-  return { id };
-}
-
-export async function toggleHistoryFavorite(userId: string, id: string): Promise<HistoryEntry> {
-  await delay(250);
-  const entry = historyFor(userId).find((item) => item.id === id);
-  if (!entry) throw new Error("Riwayat tidak ditemukan");
-  entry.favorite = !entry.favorite;
-  return entry;
-}
+/* Riwayat & favorit kini tersimpan di database melalui `server/history.ts`
+   (endpoint `/api/history`). Modul ini tidak lagi menyimpan riwayat in-memory. */
 
 /* ------------------------------------------------------------------ */
 /* Meal Planner (FR-26, FR-27, FR-28) — in-memory per pengguna         */
@@ -304,31 +185,17 @@ export async function toggleHistoryFavorite(userId: string, id: string): Promise
 
 const WEEK_LABEL = "Pekan Ini (Senin - Minggu)";
 
-const MEAL_SEED: readonly MealPlanEntry[] = [
-  {
-    id: "meal-seed-1",
-    day: "senin",
-    slot: "sarapan",
-    recipe: MOCK_RECIPES[6]!,
-    note: "",
-  },
-  {
-    id: "meal-seed-2",
-    day: "selasa",
-    slot: "makan-malam",
-    recipe: MOCK_RECIPES[5]!,
-    note: "",
-  },
-];
+// Catatan: meal planner kini mulai KOSONG (tanpa seed mock). Resep diambil dari
+// database, dan akan diintegrasikan penuh ke tabel `meal_plans` pada fase berikutnya.
 
 const mealKey = (userId: string, weekId: string): string => `${userId}::${weekId}`;
 
-/** Jadwal milik seorang pengguna pada satu pekan; di-seed sekali. */
+/** Jadwal milik seorang pengguna pada satu pekan; mulai kosong. */
 const mealFor = (userId: string, weekId: string): MealPlanEntry[] => {
   const key = mealKey(userId, weekId);
   let list = dataStores.mealPlanByUser.get(key);
   if (!list) {
-    list = weekId === "pekan-ini" ? MEAL_SEED.map((entry) => ({ ...entry })) : [];
+    list = [];
     dataStores.mealPlanByUser.set(key, list);
   }
   return list;
@@ -354,7 +221,7 @@ export async function assignMealPlanEntry(
   input: AssignMealPlanInput,
 ): Promise<MealPlanEntry> {
   await delay(350);
-  const recipe = findRecipeSync(input.recipeId);
+  const recipe = await getRecipeById(input.recipeId);
   if (!recipe) throw new Error("Resep tidak ditemukan");
 
   const entries = mealFor(userId, input.weekId);
@@ -500,7 +367,7 @@ export async function generateShoppingListFromRecipe(
   recipeId: string,
 ): Promise<ShoppingList> {
   await delay(500);
-  const recipe = findRecipeSync(recipeId);
+  const recipe = await getRecipeById(recipeId);
   if (!recipe) throw new Error("Resep tidak ditemukan");
   const base = shoppingFor(userId);
   const list = mergeIntoList(base, [recipe]);

@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { HistoryFilterSchema } from "@/schemas/domain";
-import { getUserIdFromRequest } from "@/server/auth";
-import { listHistory, saveHistoryEntry } from "@/server/data";
-import { jsonError, parseJsonBody } from "@/server/http";
+import { BackendError } from "@/server/backend-api";
+import { listHistoryFromDb, saveHistoryToDb } from "@/server/history";
+import { backendErrorResponse, parseJsonBody } from "@/server/http";
 
 export const dynamic = "force-dynamic";
 
@@ -13,12 +13,18 @@ const SaveHistoryBodySchema = z.object({
   note: z.string(),
 });
 
-/** GET /api/history?filter=all|favorite|month — FR-13 (per pengguna). */
+/** GET /api/history?filter=all|favorite|month — FR-13 (per pengguna, dari DB). */
 export async function GET(request: Request): Promise<NextResponse> {
   const { searchParams } = new URL(request.url);
   const filter = HistoryFilterSchema.catch("all").parse(searchParams.get("filter"));
-  const entries = await listHistory(getUserIdFromRequest(request), filter);
-  return NextResponse.json(entries);
+  try {
+    return NextResponse.json(await listHistoryFromDb(filter));
+  } catch (error) {
+    if (error instanceof BackendError && error.status === 401) {
+      return NextResponse.json([]);
+    }
+    return backendErrorResponse(error);
+  }
 }
 
 /** POST /api/history — FR-12 (simpan rekomendasi ke riwayat). */
@@ -27,12 +33,9 @@ export async function POST(request: Request): Promise<NextResponse> {
   if (!parsed.ok) return parsed.response;
 
   try {
-    const entry = await saveHistoryEntry(getUserIdFromRequest(request), parsed.data);
+    const entry = await saveHistoryToDb(parsed.data);
     return NextResponse.json(entry, { status: 201 });
   } catch (error) {
-    return jsonError(
-      error instanceof Error ? error.message : "Gagal menyimpan riwayat",
-      400,
-    );
+    return backendErrorResponse(error);
   }
 }

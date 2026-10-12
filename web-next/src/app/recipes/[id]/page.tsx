@@ -6,11 +6,14 @@ import { Suspense } from "react";
 import { GlassShell } from "@/components/glass-shell";
 import { RecipeDetail } from "@/components/recipe-detail";
 import { RecipeDetailSkeleton } from "@/components/recipe-detail-skeleton";
-import { findRecipeSync, getRecipeForRequest } from "@/server/data";
+import { getRecipeForRequest } from "@/server/data";
 
 interface RecipePageProps {
   readonly params: Promise<{ id: string }>;
 }
+
+// Detail resep dibaca dari database saat request.
+export const dynamic = "force-dynamic";
 
 /** Modul 6: Metadata API dinamis (SEO) per resep. */
 export async function generateMetadata({ params }: RecipePageProps): Promise<Metadata> {
@@ -45,7 +48,9 @@ export default async function RecipeDetailPage({ params }: RecipePageProps) {
   const { id } = await params;
 
   // Cek keberadaan lebih dulu agar status HTTP 404 benar sebelum streaming.
-  if (!findRecipeSync(id)) {
+  // `getRecipeForRequest` di-cache per request (deduplikasi dengan komponen).
+  const exists = await getRecipeForRequest(id);
+  if (!exists) {
     notFound();
   }
 
