@@ -55,12 +55,15 @@ export const PREFERENCE_OPTIONS = [
   "Pedas",
 ] as const;
 
+/** Label opsi checkbox alergi/pantangan (dipakai masyarakat & SPPG). */
 export const ALLERGY_OPTIONS = [
-  "Kacang",
   "Seafood",
+  "Kacang",
   "Telur",
   "Santan",
   "Gluten",
+  "Susu",
+  "Kedelai",
 ] as const;
 
 export const AGE_GROUPS = AgeGroupSchema.options;

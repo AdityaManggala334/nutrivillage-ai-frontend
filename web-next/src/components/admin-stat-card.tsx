@@ -11,7 +11,7 @@ export interface AdminStatCardProps {
 /** Kartu statistik dashboard admin. React Server Component (tanpa JS klien). */
 export function AdminStatCard({ label, value, icon, accent }: AdminStatCardProps) {
   return (
-    <div className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-stone-800 dark:bg-stone-900">
+    <div className="glass lift rounded-2xl p-4">
       <span className={cn("flex size-9 items-center justify-center rounded-xl", accent)}>
         {icon}
       </span>

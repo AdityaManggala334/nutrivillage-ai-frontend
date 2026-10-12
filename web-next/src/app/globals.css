@@ -38,6 +38,10 @@
   --radius-card: 1rem;
   --shadow-card: 0 1px 2px 0 rgb(6 78 59 / 0.06), 0 8px 24px -8px rgb(6 78 59 / 0.18);
   --shadow-float: 0 12px 32px -12px rgb(6 78 59 / 0.35);
+
+  /* Glassmorphism elevation — lembut, berlapis, untuk permukaan translusen. */
+  --shadow-glass: 0 1px 1px 0 rgb(6 78 59 / 0.05), 0 12px 32px -14px rgb(6 78 59 / 0.22);
+  --shadow-glass-lg: 0 2px 4px 0 rgb(6 78 59 / 0.06), 0 24px 60px -20px rgb(6 78 59 / 0.3);
 }
 
 @layer base {
@@ -199,5 +203,221 @@
   }
   .dark .divide-stone-200 > * + * {
     border-color: var(--color-stone-800);
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Glassmorphism — permukaan translusen untuk landing, auth,           */
+/* onboarding, dan dashboard. Palet brand dipertahankan; yang berubah  */
+/* hanya treatment permukaan (blur, border tipis, elevasi).            */
+/* ------------------------------------------------------------------ */
+@layer components {
+  .glass {
+    background-color: color-mix(in srgb, white 72%, transparent);
+    border: 1px solid color-mix(in srgb, white 60%, transparent);
+    box-shadow: var(--shadow-glass);
+    -webkit-backdrop-filter: blur(16px) saturate(150%);
+    backdrop-filter: blur(16px) saturate(150%);
+  }
+
+  .glass-strong {
+    background-color: color-mix(in srgb, white 86%, transparent);
+    border: 1px solid color-mix(in srgb, white 70%, transparent);
+    box-shadow: var(--shadow-glass-lg);
+    -webkit-backdrop-filter: blur(22px) saturate(160%);
+    backdrop-filter: blur(22px) saturate(160%);
+  }
+
+  .glass-subtle {
+    background-color: color-mix(in srgb, white 55%, transparent);
+    border: 1px solid color-mix(in srgb, white 45%, transparent);
+    -webkit-backdrop-filter: blur(12px) saturate(140%);
+    backdrop-filter: blur(12px) saturate(140%);
+  }
+
+  .dark .glass {
+    background-color: color-mix(in srgb, var(--color-stone-900) 60%, transparent);
+    border-color: color-mix(in srgb, white 10%, transparent);
+  }
+
+  .dark .glass-strong {
+    background-color: color-mix(in srgb, var(--color-stone-900) 72%, transparent);
+    border-color: color-mix(in srgb, white 12%, transparent);
+  }
+
+  .dark .glass-subtle {
+    background-color: color-mix(in srgb, var(--color-stone-900) 45%, transparent);
+    border-color: color-mix(in srgb, white 8%, transparent);
+  }
+
+  /* Fallback bila backdrop-filter tidak didukung: permukaan tetap solid. */
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass,
+    .glass-strong,
+    .glass-subtle {
+      background-color: color-mix(in srgb, white 94%, transparent);
+    }
+    .dark .glass,
+    .dark .glass-strong,
+    .dark .glass-subtle {
+      background-color: color-mix(in srgb, var(--color-stone-900) 94%, transparent);
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Animasi & interaksi. Tanpa dependensi eksternal; seluruh efek      */
+/* dimatikan otomatis lewat prefers-reduced-motion.                    */
+/* ------------------------------------------------------------------ */
+@keyframes nv-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes nv-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes nv-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes nv-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+@keyframes nv-pulse-ring {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.7;
+  }
+  70% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes nv-mesh-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(2%, -3%, 0) scale(1.06);
+  }
+}
+
+@layer utilities {
+  .animate-fade-up {
+    animation: nv-fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .animate-fade-in {
+    animation: nv-fade-in 0.6s ease-out both;
+  }
+  .animate-scale-in {
+    animation: nv-scale-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .animate-float {
+    animation: nv-float 6s ease-in-out infinite;
+  }
+  .animate-mesh {
+    animation: nv-mesh-drift 18s ease-in-out infinite;
+  }
+
+  /* Teks gradien brand. */
+  .text-gradient-brand {
+    background-image: linear-gradient(
+      100deg,
+      var(--color-brand-600),
+      var(--color-brand-400) 55%,
+      var(--color-harvest-400)
+    );
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+  }
+
+  /* Scroll reveal: elemen mulai tersembunyi lalu muncul saat masuk viewport. */
+  .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition:
+      opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+      transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: opacity, transform;
+  }
+  .reveal[data-direction="left"] {
+    transform: translateX(-28px);
+  }
+  .reveal[data-direction="right"] {
+    transform: translateX(28px);
+  }
+  .reveal[data-direction="scale"] {
+    transform: scale(0.94);
+  }
+  .reveal[data-direction="none"] {
+    transform: none;
+  }
+  .reveal.is-visible {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* Efek tekan tombol/element interaktif. */
+  .press {
+    transition:
+      transform 0.14s cubic-bezier(0.16, 1, 0.3, 1),
+      box-shadow 0.2s ease;
+  }
+  .press:active {
+    transform: scale(0.965);
+  }
+
+  .lift {
+    transition:
+      transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+      box-shadow 0.25s ease,
+      border-color 0.25s ease;
+  }
+  .lift:hover {
+    transform: translateY(-4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .animate-float,
+  .animate-mesh {
+    animation: none !important;
   }
 }

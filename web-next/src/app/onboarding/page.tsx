@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { GlassShell } from "@/components/glass-shell";
 import { OnboardingFlow } from "@/components/onboarding-flow";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
@@ -15,9 +16,11 @@ export default function OnboardingPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <SiteHeader />
-      <main id="konten-utama" className="flex-1">
-        <OnboardingFlow />
-      </main>
+      <GlassShell className="flex-1">
+        <main id="konten-utama">
+          <OnboardingFlow />
+        </main>
+      </GlassShell>
       <SiteFooter />
     </div>
   );

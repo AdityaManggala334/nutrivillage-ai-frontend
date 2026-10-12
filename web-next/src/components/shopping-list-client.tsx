@@ -76,7 +76,7 @@ export function ShoppingListClient() {
           description="Jadwalkan menu di Meal Planner, lalu tekan Generate dari Jadwal untuk mengisi daftar belanja."
         />
       ) : (
-        <div className="rounded-2xl border border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900">
+        <div className="glass rounded-2xl">
           <ul className="divide-y divide-stone-100 dark:divide-stone-800">
             {list.items.map((item) => (
               <li key={item.id} className="flex items-center gap-3 px-4 py-3">
@@ -133,7 +133,7 @@ export function ShoppingListClient() {
         </div>
       )}
 
-      <div className="rounded-2xl border border-stone-200 bg-white p-4 dark:border-stone-800 dark:bg-stone-900">
+      <div className="glass rounded-2xl p-4">
         <label
           htmlFor="catatan-belanja"
           className="mb-2 flex items-center gap-2 text-sm font-medium text-stone-700 dark:text-stone-200"

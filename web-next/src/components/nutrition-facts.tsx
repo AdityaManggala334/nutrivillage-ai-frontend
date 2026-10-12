@@ -44,7 +44,7 @@ export function NutritionFacts({ nutrition, servings }: NutritionFactsProps) {
             <div
               key={macro.key}
               className={cn(
-                "rounded-xl border border-stone-200 bg-white p-3 dark:border-stone-800 dark:bg-stone-900",
+                "glass-subtle rounded-xl p-3",
                 isLast && "col-span-2 sm:col-span-1",
               )}
             >

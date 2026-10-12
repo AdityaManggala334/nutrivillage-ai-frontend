@@ -7,8 +7,11 @@ import {
   ListTree,
   MapPin,
   Salad,
+  School,
   ScrollText,
+  ShieldAlert,
   Tags,
+  UserCog,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -34,6 +37,19 @@ const GROUPS = [
     links: [
       { href: "/admin/harga", label: "Verifikasi Harga", icon: Tags },
       { href: "/admin/monitoring", label: "Monitoring Scraper", icon: Leaf },
+    ],
+  },
+  {
+    title: "Keamanan Pangan",
+    links: [
+      { href: "/admin/keamanan-pangan", label: "Informasi Keamanan", icon: ShieldAlert },
+    ],
+  },
+  {
+    title: "Pengguna & Referensi",
+    links: [
+      { href: "/admin/pengguna", label: "Kelola Pengguna", icon: UserCog },
+      { href: "/admin/sekolah", label: "Data Sekolah", icon: School },
     ],
   },
 ] as const;

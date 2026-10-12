@@ -4,7 +4,7 @@ import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
 
 export const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition-colors duration-150 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-60",
+  "inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition duration-150 ease-out focus-visible:outline-none active:scale-[.97] disabled:pointer-events-none disabled:opacity-60",
   {
     variants: {
       intent: {

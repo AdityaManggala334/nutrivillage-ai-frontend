@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { GlassShell } from "@/components/glass-shell";
 import { RecipeDetail } from "@/components/recipe-detail";
 import { RecipeDetailSkeleton } from "@/components/recipe-detail-skeleton";
 import { findRecipeSync, getRecipeForRequest } from "@/server/data";
@@ -49,7 +50,7 @@ export default async function RecipeDetailPage({ params }: RecipePageProps) {
   }
 
   return (
-    <div className="min-h-screen">
+    <GlassShell className="min-h-screen">
       <header className="mx-auto flex max-w-6xl items-center justify-between px-4 py-5">
         <Link href="/" className="flex items-center gap-2">
           <span className="flex size-9 items-center justify-center rounded-xl bg-brand-600 text-white">
@@ -72,6 +73,6 @@ export default async function RecipeDetailPage({ params }: RecipePageProps) {
           <RecipeContent id={id} />
         </Suspense>
       </main>
-    </div>
+    </GlassShell>
   );
 }

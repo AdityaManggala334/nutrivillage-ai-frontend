@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button, FieldError, Input, Label, Select } from "@/components/ui";
 import { useProfile, useSaveProfileMutation } from "@/hooks/use-profile";
+import { cn } from "@/lib/utils";
+import { ALLERGY_OPTIONS } from "@/schemas/explore";
 import {
   familyProfileFormSchema,
   type ActivityLevel,
@@ -17,7 +19,7 @@ interface MemberInput {
   gender: Gender;
   weightKg: string;
   activityLevel: ActivityLevel;
-  allergies: string;
+  allergies: string[];
 }
 
 const emptyMember = (): MemberInput => ({
@@ -26,8 +28,11 @@ const emptyMember = (): MemberInput => ({
   gender: "laki-laki",
   weightKg: "",
   activityLevel: "sedang",
-  allergies: "",
+  allergies: [],
 });
+
+const toggleItem = (list: readonly string[], value: string): string[] =>
+  list.includes(value) ? list.filter((item) => item !== value) : [...list, value];
 
 const SLIDES = [
   {
@@ -161,12 +166,12 @@ export function OnboardingFlow() {
           {[0, 1, 2, 3].map((index) => (
             <li
               key={index}
-              className={`h-2 w-10 rounded-full ${index <= step ? "bg-brand-600" : "bg-stone-200"}`}
+              className={`h-2 w-10 rounded-full transition-colors duration-500 ${index <= step ? "bg-brand-600" : "bg-stone-200"}`}
             />
           ))}
         </ol>
 
-        <div className="rounded-card mt-6 bg-white p-6 shadow-card sm:p-8">
+        <div className="glass-strong animate-scale-in mt-6 rounded-3xl p-6 sm:p-8">
           {isForm ? (
             <form onSubmit={handleSubmit} noValidate>
               {serverError ? (
@@ -239,7 +244,7 @@ export function OnboardingFlow() {
                 {members.map((member, index) => (
                   <fieldset
                     key={index}
-                    className="rounded-xl border border-stone-200 bg-stone-50/60 p-4 dark:border-stone-800 dark:bg-stone-900/60"
+                    className="glass-subtle rounded-xl border border-white/50 p-4 dark:border-white/10"
                   >
                     <legend className="px-1 text-sm font-semibold text-stone-700">
                       Anggota Keluarga {index + 1}
@@ -314,16 +319,37 @@ export function OnboardingFlow() {
                           <option value="tinggi">Tinggi (aktif berolahraga)</option>
                         </Select>
                       </div>
-                      <div className="mb-3 space-y-1.5">
-                        <Label htmlFor={`member-${index}-allergies`}>Alergi / Pantangan</Label>
-                        <Input
-                          id={`member-${index}-allergies`}
-                          placeholder="Contoh: kacang, seafood"
-                          value={member.allergies}
-                          onChange={(event) => updateMember(index, { allergies: event.target.value })}
-                        />
+                      <div className="mb-3 space-y-1.5 sm:col-span-2">
+                        <span className="text-sm font-medium text-stone-700 dark:text-stone-200">
+                          Alergi / Pantangan
+                        </span>
+                        <div className="flex flex-wrap gap-2">
+                          {ALLERGY_OPTIONS.map((option) => {
+                            const active = member.allergies.includes(option);
+                            return (
+                              <button
+                                key={option}
+                                type="button"
+                                aria-pressed={active}
+                                onClick={() =>
+                                  updateMember(index, {
+                                    allergies: toggleItem(member.allergies, option),
+                                  })
+                                }
+                                className={cn(
+                                  "press rounded-full border px-3 py-1.5 text-xs font-medium transition",
+                                  active
+                                    ? "border-red-400 bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-300"
+                                    : "border-stone-300 text-stone-600 hover:bg-stone-100 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800",
+                                )}
+                              >
+                                {option}
+                              </button>
+                            );
+                          })}
+                        </div>
                         <p className="text-xs text-stone-500">
-                          Pisahkan dengan koma. Kosongkan bila tidak ada.
+                          Pilih bahan yang menjadi alergi/pantangan. Kosongkan bila tidak ada.
                         </p>
                       </div>
                     </div>

@@ -121,7 +121,7 @@ export function MealPlannerBoard() {
         {DAYS.map((day) => (
           <div
             key={day}
-            className="rounded-2xl border border-stone-200 bg-white p-3 shadow-sm dark:border-stone-800 dark:bg-stone-900"
+            className="glass rounded-2xl p-3"
           >
             <h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-stone-800 dark:text-stone-100">
               <CalendarCheck className="size-4 text-brand-600" aria-hidden="true" />

@@ -1,18 +1,17 @@
 "use client";
 
 import { Bell, Globe, LogOut, Save, User, Users } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button, ButtonLink, Card, CardContent, CardHeader, CardTitle, FieldError, Input, Label, Select, Switch } from "@/components/ui";
 import { useAccount, useUpdateAccountMutation } from "@/hooks/use-account";
 import { useProfile, useSaveProfileMutation } from "@/hooks/use-profile";
 import { useUIStore } from "@/stores/ui-store";
-import { formatRupiah } from "@/lib/utils";
+import { cn, formatRupiah } from "@/lib/utils";
+import { ALLERGY_OPTIONS } from "@/schemas/explore";
 
 /** FR-18, FR-19, FR-21: halaman profil & pengaturan akun. */
 export function ProfileSettings() {
-  const router = useRouter();
   const themeMode = useUIStore((state) => state.themeMode);
   const toggleTheme = useUIStore((state) => state.toggleTheme);
 
@@ -27,7 +26,7 @@ export function ProfileSettings() {
   const [accountError, setAccountError] = useState<string | null>(null);
 
   const [preferences, setPreferences] = useState("");
-  const [avoided, setAvoided] = useState("");
+  const [avoided, setAvoided] = useState<string[]>([]);
   const [notifEnabled, setNotifEnabled] = useState(true);
   const [language, setLanguage] = useState("id");
 
@@ -42,9 +41,14 @@ export function ProfileSettings() {
   useEffect(() => {
     if (profileQuery.data) {
       setPreferences(profileQuery.data.preferences.join(", "));
-      setAvoided(profileQuery.data.avoidedIngredients.join(", "));
+      setAvoided(profileQuery.data.avoidedIngredients);
     }
   }, [profileQuery.data]);
+
+  const toggleAvoided = (value: string) =>
+    setAvoided((current) =>
+      current.includes(value) ? current.filter((item) => item !== value) : [...current, value],
+    );
 
   const handleSaveAccount = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -76,8 +80,7 @@ export function ProfileSettings() {
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
-    router.replace("/login");
-    router.refresh();
+    window.location.assign("/login");
   };
 
   return (
@@ -178,14 +181,31 @@ export function ProfileSettings() {
             />
             <p className="text-xs text-stone-500 dark:text-stone-400">Pisahkan dengan koma.</p>
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="profile-avoided">Bahan yang dihindari</Label>
-            <Input
-              id="profile-avoided"
-              value={avoided}
-              placeholder="kacang, seafood"
-              onChange={(event) => setAvoided(event.target.value)}
-            />
+          <div className="space-y-2">
+            <span className="text-sm font-medium text-stone-700 dark:text-stone-200">
+              Bahan yang dihindari (alergi/pantangan)
+            </span>
+            <div className="flex flex-wrap gap-2">
+              {ALLERGY_OPTIONS.map((option) => {
+                const active = avoided.includes(option);
+                return (
+                  <button
+                    key={option}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => toggleAvoided(option)}
+                    className={cn(
+                      "press rounded-full border px-3 py-1.5 text-xs font-medium transition",
+                      active
+                        ? "border-red-400 bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-300"
+                        : "border-stone-300 text-stone-600 hover:bg-stone-100 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800",
+                    )}
+                  >
+                    {option}
+                  </button>
+                );
+              })}
+            </div>
             <FieldError />
           </div>
           <Button

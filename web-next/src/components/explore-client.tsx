@@ -17,7 +17,7 @@ export function ExploreClient() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,26rem)_1fr]">
-      <div className="h-fit rounded-2xl border border-stone-200 bg-white p-5 shadow-sm dark:border-stone-800 dark:bg-stone-900">
+      <div className="glass h-fit rounded-2xl p-5">
         <ExploreForm onGenerate={setPayload} isLoading={payload !== null && fetchingCount > 0} />
       </div>
       <div className="min-w-0">

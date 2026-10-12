@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { GlassShell } from "@/components/glass-shell";
 import { RecipeCard } from "@/components/recipe-card";
 import { SectionHeading } from "@/components/section-heading";
 import { SiteFooter } from "@/components/site-footer";
@@ -20,19 +21,21 @@ export default async function KatalogPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <SiteHeader />
-      <main id="konten-utama" className="app-container flex-1 py-10">
-        <SectionHeading
-          eyebrow="Katalog Publik"
-          title="Katalog Resep Pangan Lokal"
-          description="Pengunjung dapat membaca katalog resep tanpa mendaftar. Untuk menjalankan rekomendasi menu, silakan masuk atau daftar."
-          action={<ButtonLink href="/login">Masuk / Daftar</ButtonLink>}
-        />
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {recipes.map((recipe) => (
-            <RecipeCard key={recipe.id} recipe={recipe} />
-          ))}
-        </div>
-      </main>
+      <GlassShell className="flex-1">
+        <main id="konten-utama" className="app-container py-10">
+          <SectionHeading
+            eyebrow="Katalog Publik"
+            title="Katalog Resep Pangan Lokal"
+            description="Pengunjung dapat membaca katalog resep tanpa mendaftar. Untuk menjalankan rekomendasi menu, silakan masuk atau daftar."
+            action={<ButtonLink href="/login">Masuk / Daftar</ButtonLink>}
+          />
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {recipes.map((recipe) => (
+              <RecipeCard key={recipe.id} recipe={recipe} />
+            ))}
+          </div>
+        </main>
+      </GlassShell>
       <SiteFooter />
     </div>
   );

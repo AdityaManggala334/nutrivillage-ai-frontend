@@ -36,23 +36,27 @@ const daysAgo = (days: number): string => {
 };
 
 interface DataStores {
-  historyStore: HistoryEntry[];
-  mealPlanStore: Map<string, MealPlanEntry[]>;
-  shoppingListStore: ShoppingList | null;
+  /** Riwayat per pengguna. */
+  historyByUser: Map<string, HistoryEntry[]>;
+  /** Jadwal makan per pengguna+pekan (`userId::weekId`). */
+  mealPlanByUser: Map<string, MealPlanEntry[]>;
+  /** Daftar belanja per pengguna. */
+  shoppingByUser: Map<string, ShoppingList>;
 }
 
 /**
  * Store di `globalThis` agar dibagi oleh SELURUH Route Handler dalam satu
  * proses (mencegah data hilang saat modul di-instantiate terpisah per route).
+ * Semua store DIKUNCI per `userId` supaya data antarpengguna tidak tercampur.
  */
 const globalForData = globalThis as unknown as { __nutrivillageData?: DataStores };
 
 const dataStores: DataStores =
   globalForData.__nutrivillageData ??
   (globalForData.__nutrivillageData = {
-    historyStore: [],
-    mealPlanStore: new Map<string, MealPlanEntry[]>(),
-    shoppingListStore: null,
+    historyByUser: new Map<string, HistoryEntry[]>(),
+    mealPlanByUser: new Map<string, MealPlanEntry[]>(),
+    shoppingByUser: new Map<string, ShoppingList>(),
   });
 
 /* ------------------------------------------------------------------ */
@@ -104,6 +108,8 @@ const ALLERGY_TAG_MAP: Readonly<Record<string, string>> = {
   Telur: "telur",
   Santan: "santan",
   Gluten: "gluten",
+  Susu: "susu",
+  Kedelai: "kedelai",
 };
 
 const matchesAllergy = (recipe: Recipe, allergies: readonly string[]): boolean =>
@@ -184,45 +190,55 @@ export async function generateRecommendations(
 }
 
 /* ------------------------------------------------------------------ */
-/* Riwayat (FR-12, FR-13, FR-14) — penyimpanan in-memory               */
+/* Riwayat (FR-12, FR-13, FR-14) — penyimpanan in-memory per pengguna  */
 /* ------------------------------------------------------------------ */
 
-const historyStore = dataStores.historyStore;
+const HISTORY_SEED: readonly HistoryEntry[] = [
+  {
+    id: "riwayat-seed-1",
+    kind: "recommendation",
+    recipe: MOCK_RECIPES[0]!,
+    savedAt: daysAgo(2),
+    favorite: true,
+    note: "Favorit keluarga, sambal pecelnya ditambah.",
+  },
+  {
+    id: "riwayat-seed-2",
+    kind: "recommendation",
+    recipe: MOCK_RECIPES[4]!,
+    savedAt: daysAgo(20),
+    favorite: false,
+    note: "",
+  },
+  {
+    id: "riwayat-seed-3",
+    kind: "meal-plan",
+    recipe: MOCK_RECIPES[3]!,
+    savedAt: daysAgo(40),
+    favorite: false,
+    note: "Dijadwalkan untuk makan malam.",
+  },
+];
 
-if (historyStore.length === 0) {
-  historyStore.push(
-    {
-      id: "riwayat-seed-1",
-      kind: "recommendation",
-      recipe: MOCK_RECIPES[0]!,
-      savedAt: daysAgo(2),
-      favorite: true,
-      note: "Favorit keluarga, sambal pecelnya ditambah.",
-    },
-    {
-      id: "riwayat-seed-2",
-      kind: "recommendation",
-      recipe: MOCK_RECIPES[4]!,
-      savedAt: daysAgo(20),
-      favorite: false,
-      note: "",
-    },
-    {
-      id: "riwayat-seed-3",
-      kind: "meal-plan",
-      recipe: MOCK_RECIPES[3]!,
-      savedAt: daysAgo(40),
-      favorite: false,
-      note: "Dijadwalkan untuk makan malam.",
-    },
-  );
-}
+/** Riwayat milik satu pengguna; di-seed sekali saat pertama diakses. */
+const historyFor = (userId: string): HistoryEntry[] => {
+  let list = dataStores.historyByUser.get(userId);
+  if (!list) {
+    list = HISTORY_SEED.map((entry) => ({ ...entry }));
+    dataStores.historyByUser.set(userId, list);
+  }
+  return list;
+};
 
 export type HistoryFilter = "all" | "favorite" | "month";
 
-export async function listHistory(filter: HistoryFilter): Promise<HistoryEntry[]> {
+export async function listHistory(
+  userId: string,
+  filter: HistoryFilter,
+): Promise<HistoryEntry[]> {
   await delay(500);
-  const sorted = [...historyStore].sort(
+  const store = historyFor(userId);
+  const sorted = [...store].sort(
     (a, b) => new Date(b.savedAt).getTime() - new Date(a.savedAt).getTime(),
   );
   if (filter === "favorite") return sorted.filter((entry) => entry.favorite);
@@ -236,16 +252,20 @@ export async function listHistory(filter: HistoryFilter): Promise<HistoryEntry[]
   return sorted;
 }
 
-export async function saveHistoryEntry(input: {
-  recipeId: string;
-  kind: HistoryEntry["kind"];
-  note: string;
-}): Promise<HistoryEntry> {
+export async function saveHistoryEntry(
+  userId: string,
+  input: {
+    recipeId: string;
+    kind: HistoryEntry["kind"];
+    note: string;
+  },
+): Promise<HistoryEntry> {
   await delay(400);
   const recipe = findRecipeSync(input.recipeId);
   if (!recipe) throw new Error("Resep tidak ditemukan");
 
-  const existing = historyStore.find(
+  const store = historyFor(userId);
+  const existing = store.find(
     (entry) => entry.recipe.id === recipe.id && entry.kind === input.kind,
   );
   if (existing) return existing;
@@ -258,58 +278,68 @@ export async function saveHistoryEntry(input: {
     favorite: false,
     note: input.note,
   };
-  historyStore.unshift(entry);
+  store.unshift(entry);
   return entry;
 }
 
-export async function deleteHistoryEntry(id: string): Promise<{ id: string }> {
+export async function deleteHistoryEntry(userId: string, id: string): Promise<{ id: string }> {
   await delay(300);
-  const index = historyStore.findIndex((entry) => entry.id === id);
-  if (index >= 0) historyStore.splice(index, 1);
+  const store = historyFor(userId);
+  const index = store.findIndex((entry) => entry.id === id);
+  if (index >= 0) store.splice(index, 1);
   return { id };
 }
 
-export async function toggleHistoryFavorite(id: string): Promise<HistoryEntry> {
+export async function toggleHistoryFavorite(userId: string, id: string): Promise<HistoryEntry> {
   await delay(250);
-  const entry = historyStore.find((item) => item.id === id);
+  const entry = historyFor(userId).find((item) => item.id === id);
   if (!entry) throw new Error("Riwayat tidak ditemukan");
   entry.favorite = !entry.favorite;
   return entry;
 }
 
 /* ------------------------------------------------------------------ */
-/* Meal Planner (FR-26, FR-27, FR-28) — penyimpanan in-memory          */
+/* Meal Planner (FR-26, FR-27, FR-28) — in-memory per pengguna         */
 /* ------------------------------------------------------------------ */
-
-const mealPlanStore = dataStores.mealPlanStore;
-
-if (mealPlanStore.size === 0) {
-  mealPlanStore.set("pekan-ini", [
-    {
-      id: "meal-seed-1",
-      day: "senin",
-      slot: "sarapan",
-      recipe: MOCK_RECIPES[6]!,
-      note: "",
-    },
-    {
-      id: "meal-seed-2",
-      day: "selasa",
-      slot: "makan-malam",
-      recipe: MOCK_RECIPES[5]!,
-      note: "",
-    },
-  ]);
-}
 
 const WEEK_LABEL = "Pekan Ini (Senin - Minggu)";
 
-export async function getMealPlan(weekId: string): Promise<MealPlan> {
+const MEAL_SEED: readonly MealPlanEntry[] = [
+  {
+    id: "meal-seed-1",
+    day: "senin",
+    slot: "sarapan",
+    recipe: MOCK_RECIPES[6]!,
+    note: "",
+  },
+  {
+    id: "meal-seed-2",
+    day: "selasa",
+    slot: "makan-malam",
+    recipe: MOCK_RECIPES[5]!,
+    note: "",
+  },
+];
+
+const mealKey = (userId: string, weekId: string): string => `${userId}::${weekId}`;
+
+/** Jadwal milik seorang pengguna pada satu pekan; di-seed sekali. */
+const mealFor = (userId: string, weekId: string): MealPlanEntry[] => {
+  const key = mealKey(userId, weekId);
+  let list = dataStores.mealPlanByUser.get(key);
+  if (!list) {
+    list = weekId === "pekan-ini" ? MEAL_SEED.map((entry) => ({ ...entry })) : [];
+    dataStores.mealPlanByUser.set(key, list);
+  }
+  return list;
+};
+
+export async function getMealPlan(userId: string, weekId: string): Promise<MealPlan> {
   await delay(450);
   return {
     weekId,
     weekLabel: WEEK_LABEL,
-    entries: mealPlanStore.get(weekId) ?? [],
+    entries: mealFor(userId, weekId),
   };
 }
 
@@ -319,12 +349,15 @@ export type AssignMealPlanInput = Pick<MealPlanEntry, "day" | "slot" | "note"> &
   readonly recipeId: string;
 };
 
-export async function assignMealPlanEntry(input: AssignMealPlanInput): Promise<MealPlanEntry> {
+export async function assignMealPlanEntry(
+  userId: string,
+  input: AssignMealPlanInput,
+): Promise<MealPlanEntry> {
   await delay(350);
   const recipe = findRecipeSync(input.recipeId);
   if (!recipe) throw new Error("Resep tidak ditemukan");
 
-  const entries = mealPlanStore.get(input.weekId) ?? [];
+  const entries = mealFor(userId, input.weekId);
   const withoutSlot = entries.filter(
     (entry) => !(entry.day === input.day && entry.slot === input.slot),
   );
@@ -335,18 +368,22 @@ export async function assignMealPlanEntry(input: AssignMealPlanInput): Promise<M
     recipe,
     note: input.note,
   };
-  mealPlanStore.set(input.weekId, [...withoutSlot, entry]);
+  withoutSlot.push(entry);
+  dataStores.mealPlanByUser.set(mealKey(userId, input.weekId), withoutSlot);
   return entry;
 }
 
-export async function removeMealPlanEntry(input: {
-  weekId: string;
-  entryId: string;
-}): Promise<{ entryId: string }> {
+export async function removeMealPlanEntry(
+  userId: string,
+  input: {
+    weekId: string;
+    entryId: string;
+  },
+): Promise<{ entryId: string }> {
   await delay(300);
-  const entries = mealPlanStore.get(input.weekId) ?? [];
-  mealPlanStore.set(
-    input.weekId,
+  const entries = mealFor(userId, input.weekId);
+  dataStores.mealPlanByUser.set(
+    mealKey(userId, input.weekId),
     entries.filter((entry) => entry.id !== input.entryId),
   );
   return { entryId: input.entryId };
@@ -425,66 +462,92 @@ const mergeIntoList = (list: ShoppingList, recipes: readonly Recipe[]): Shopping
   return recomputeTotal({ ...list, items: [...map.values()], generatedAt: nowIso() });
 };
 
-export function getShoppingListSync(): ShoppingList {
-  if (!dataStores.shoppingListStore) {
-    dataStores.shoppingListStore = buildShoppingList(`Daftar Belanja ${WEEK_LABEL}`, []);
+const shoppingFor = (userId: string): ShoppingList => {
+  let list = dataStores.shoppingByUser.get(userId);
+  if (!list) {
+    list = buildShoppingList(`Daftar Belanja ${WEEK_LABEL}`, []);
+    dataStores.shoppingByUser.set(userId, list);
   }
-  return dataStores.shoppingListStore;
+  return list;
+};
+
+export function getShoppingListSync(userId: string): ShoppingList {
+  return shoppingFor(userId);
 }
 
-export async function getShoppingList(): Promise<ShoppingList> {
+export async function getShoppingList(userId: string): Promise<ShoppingList> {
   await delay(300);
-  return getShoppingListSync();
+  return shoppingFor(userId);
 }
 
-export async function generateShoppingList(weekId: string): Promise<ShoppingList> {
+export async function generateShoppingList(
+  userId: string,
+  weekId: string,
+): Promise<ShoppingList> {
   await delay(700);
-  const entries = mealPlanStore.get(weekId) ?? [];
-  dataStores.shoppingListStore = buildShoppingList(
+  const entries = mealFor(userId, weekId);
+  const list = buildShoppingList(
     `Daftar Belanja ${WEEK_LABEL}`,
     entries.map((entry) => entry.recipe),
   );
-  return dataStores.shoppingListStore;
+  dataStores.shoppingByUser.set(userId, list);
+  return list;
 }
 
 /** FR-15: tambahkan bahan dari satu resep (hasil Explore / detail resep) ke daftar belanja. */
-export async function generateShoppingListFromRecipe(recipeId: string): Promise<ShoppingList> {
+export async function generateShoppingListFromRecipe(
+  userId: string,
+  recipeId: string,
+): Promise<ShoppingList> {
   await delay(500);
   const recipe = findRecipeSync(recipeId);
   if (!recipe) throw new Error("Resep tidak ditemukan");
-  const base = dataStores.shoppingListStore ?? buildShoppingList(`Daftar Belanja ${WEEK_LABEL}`, []);
-  dataStores.shoppingListStore = mergeIntoList(base, [recipe]);
-  return dataStores.shoppingListStore;
+  const base = shoppingFor(userId);
+  const list = mergeIntoList(base, [recipe]);
+  dataStores.shoppingByUser.set(userId, list);
+  return list;
 }
 
 /** FR-16: centang / batal centang bahan. */
-export async function toggleShoppingItem(itemId: string): Promise<ShoppingList> {
+export async function toggleShoppingItem(
+  userId: string,
+  itemId: string,
+): Promise<ShoppingList> {
   await delay(200);
-  const list = getShoppingListSync();
-  dataStores.shoppingListStore = {
+  const list = shoppingFor(userId);
+  const next: ShoppingList = {
     ...list,
     items: list.items.map((item) =>
       item.id === itemId ? { ...item, checked: !item.checked } : item,
     ),
   };
-  return dataStores.shoppingListStore;
+  dataStores.shoppingByUser.set(userId, next);
+  return next;
 }
 
 /** FR-16: hapus bahan dari daftar. */
-export async function deleteShoppingItem(itemId: string): Promise<ShoppingList> {
+export async function deleteShoppingItem(
+  userId: string,
+  itemId: string,
+): Promise<ShoppingList> {
   await delay(250);
-  const list = getShoppingListSync();
-  dataStores.shoppingListStore = recomputeTotal({
+  const list = shoppingFor(userId);
+  const next = recomputeTotal({
     ...list,
     items: list.items.filter((item) => item.id !== itemId),
   });
-  return dataStores.shoppingListStore;
+  dataStores.shoppingByUser.set(userId, next);
+  return next;
 }
 
 /** FR-17: simpan catatan tambahan pada daftar belanja. */
-export async function updateShoppingNote(note: string): Promise<ShoppingList> {
+export async function updateShoppingNote(
+  userId: string,
+  note: string,
+): Promise<ShoppingList> {
   await delay(200);
-  const list = getShoppingListSync();
-  dataStores.shoppingListStore = { ...list, note };
-  return dataStores.shoppingListStore;
+  const list = shoppingFor(userId);
+  const next = { ...list, note };
+  dataStores.shoppingByUser.set(userId, next);
+  return next;
 }

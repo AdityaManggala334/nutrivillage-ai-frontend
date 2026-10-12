@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useGuestMutation } from "@/hooks/use-auth";
 import { Button } from "@/components/ui";
 
@@ -20,14 +19,13 @@ export function GuestLoginButton({
   intent = "secondary",
   size = "lg",
 }: GuestLoginButtonProps) {
-  const router = useRouter();
   const mutation = useGuestMutation();
 
   const handleClick = () => {
     mutation.mutate(undefined, {
       onSuccess: () => {
-        router.replace("/explore");
-        router.refresh();
+        // Reload penuh agar state/cache user sebelumnya tidak terbawa.
+        window.location.assign("/explore");
       },
     });
   };

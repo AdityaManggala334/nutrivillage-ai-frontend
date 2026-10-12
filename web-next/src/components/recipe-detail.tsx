@@ -1,5 +1,6 @@
 import { ArrowLeft, Clock, Users } from "lucide-react";
 import Link from "next/link";
+import { FoodSafetyNote } from "@/components/food-safety-note";
 import { NutritionFacts } from "@/components/nutrition-facts";
 import { PriceDisclaimer } from "@/components/price-disclaimer";
 import { PriceFreshnessBadge } from "@/components/price-freshness-badge";
@@ -63,6 +64,8 @@ export function RecipeDetail({ recipe }: RecipeDetailProps) {
           </div>
 
           <NutritionFacts nutrition={recipe.nutrition} servings={recipe.servings} />
+
+          <FoodSafetyNote recipe={recipe} />
 
           <RecipeSteps recipe={recipe} />
         </div>

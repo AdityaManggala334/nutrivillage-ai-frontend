@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AuthForm } from "@/components/auth-form";
+import { GlassShell } from "@/components/glass-shell";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 
@@ -14,9 +15,11 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <SiteHeader />
-      <main id="konten-utama" className="flex-1">
-        <AuthForm />
-      </main>
+      <GlassShell className="flex-1">
+        <main id="konten-utama">
+          <AuthForm />
+        </main>
+      </GlassShell>
       <SiteFooter />
     </div>
   );

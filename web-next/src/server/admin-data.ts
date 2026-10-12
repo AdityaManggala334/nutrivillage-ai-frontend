@@ -5,6 +5,8 @@ import type {
   AdminPrice,
   AdminRecipe,
   AdminStats,
+  FoodSafetyInfo,
+  FoodSafetyVerification,
   LocalCommodity,
   PriceStatus,
   ScraperLog,
@@ -109,6 +111,83 @@ export async function verifyPrice(id: string, status: PriceStatus): Promise<Admi
   const found = prices.find((price) => price.id === id);
   if (!found) throw new Error("Data harga tidak ditemukan");
   found.status = status;
+  return found;
+}
+
+/* ------------------------------------------------------------------ */
+/* Informasi keamanan pangan                                           */
+/* ------------------------------------------------------------------ */
+
+const foodSafety: FoodSafetyInfo[] = [
+  {
+    id: "aman-1",
+    topic: "Telur",
+    riskType: "Mikrobiologis — Salmonella",
+    hazard:
+      "Telur mentah atau setengah matang dapat mengandung Salmonella yang menyebabkan gangguan pencernaan.",
+    handling:
+      "Masak telur hingga bagian putih dan kuningnya matang, simpan pada suhu dingin, dan cuci tangan setelah menangani telur mentah.",
+    source: "Pedoman Keamanan Pangan Kemenkes RI",
+    verification: "verified",
+  },
+  {
+    id: "aman-2",
+    topic: "Ayam & unggas",
+    riskType: "Mikrobiologis — kontaminasi silang",
+    hazard:
+      "Cairan mentah ayam dapat mencemari talenan dan peralatan sehingga menimbulkan kontaminasi silang.",
+    handling:
+      "Pisahkan talenan bahan mentah dan matang, masak hingga suhu internal aman, serta bersihkan permukaan yang tersentuh.",
+    source: "WHO Five Keys to Safer Food",
+    verification: "verified",
+  },
+  {
+    id: "aman-3",
+    topic: "Kacang tanah",
+    riskType: "Kimiawi — aflatoksin",
+    hazard:
+      "Kacang tanah yang disimpan lembap berisiko ditumbuhi kapang penghasil aflatoksin.",
+    handling:
+      "Simpan kacang di tempat kering dan tertutup, buang yang berjamur atau berbau apek, dan pilih bahan dari sumber terpercaya.",
+    source: "Badan Pengawas Obat dan Makanan (BPOM)",
+    verification: "verified",
+  },
+  {
+    id: "aman-4",
+    topic: "Sayuran daun",
+    riskType: "Mikrobiologis & residu pestisida",
+    hazard:
+      "Sayuran dapat membawa tanah, kotoran, atau residu pestisida bila tidak dicuci dengan benar.",
+    handling:
+      "Cuci sayuran di bawah air mengalir, rendam sebentar bila perlu, dan masak hingga matang.",
+    source: "Belum diverifikasi",
+    verification: "pending",
+  },
+  {
+    id: "aman-5",
+    topic: "Santan & olahan berkuah",
+    riskType: "Mikrobiologis — pertumbuhan bakteri",
+    hazard:
+      "Masakan santan yang dibiarkan pada suhu ruang terlalu lama cepat mengalami kerusakan.",
+    handling:
+      "Sajikan segera, panaskan kembali hingga mendidih sebelum dikonsumsi, dan simpan sisa di lemari pendingin.",
+    source: "Belum diverifikasi",
+    verification: "pending",
+  },
+];
+
+export async function getFoodSafetyInfo(): Promise<FoodSafetyInfo[]> {
+  return [...foodSafety];
+}
+
+/** Admin memverifikasi/menolak informasi keamanan pangan. */
+export async function verifyFoodSafety(
+  id: string,
+  verification: FoodSafetyVerification,
+): Promise<FoodSafetyInfo> {
+  const found = foodSafety.find((item) => item.id === id);
+  if (!found) throw new Error("Informasi keamanan pangan tidak ditemukan");
+  found.verification = verification;
   return found;
 }
 

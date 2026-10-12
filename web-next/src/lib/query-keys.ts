@@ -43,4 +43,17 @@ export const queryKeys = {
     all: ["notifications"] as const,
     list: () => ["notifications", "list"] as const,
   },
+  schools: {
+    all: ["schools"] as const,
+    list: () => ["schools", "list"] as const,
+    detail: (id: number) => ["schools", "detail", id] as const,
+  },
+  budgetPolicies: {
+    all: ["budget-policies"] as const,
+    list: () => ["budget-policies", "list"] as const,
+  },
+  adminUsers: {
+    all: ["admin-users"] as const,
+    list: () => ["admin-users", "list"] as const,
+  },
 } as const;

@@ -4,6 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { apiSend } from "@/lib/api-client";
 import {
   AuthSessionSchema,
+  UserSchema,
   type LoginInput,
   type RegisterInput,
 } from "@/schemas/auth";
@@ -16,11 +17,14 @@ export function useLoginMutation() {
   });
 }
 
-/** FR-01: mutasi registrasi. */
+/**
+ * FR-01: mutasi registrasi. Backend hanya membuat akun dan mengembalikan data
+ * pengguna (tanpa token/sesi) — pengguna harus login sendiri setelahnya.
+ */
 export function useRegisterMutation() {
   return useMutation({
     mutationFn: (input: RegisterInput) =>
-      apiSend("/api/auth/register", "POST", input, AuthSessionSchema),
+      apiSend("/api/auth/register", "POST", input, UserSchema),
   });
 }
 

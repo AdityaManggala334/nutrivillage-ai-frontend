@@ -30,6 +30,12 @@ const commaSeparatedList = z.string().transform((value) =>
     .filter((item) => item.length > 0),
 );
 
+/** Menerima array pilihan (chip) ATAU string dipisah koma (kompatibilitas). */
+const stringList = z.union([
+  z.array(z.string().trim().min(1)),
+  commaSeparatedList,
+]);
+
 export const familyMemberFormSchema = z
   .object({
     name: z.string().trim().min(2, "Nama anggota minimal 2 karakter").max(100),
@@ -44,7 +50,7 @@ export const familyMemberFormSchema = z
       .positive("Berat badan harus lebih dari 0")
       .max(250, "Berat badan tidak wajar"),
     activityLevel: ActivityLevelSchema,
-    allergies: commaSeparatedList,
+    allergies: stringList,
   })
   .transform((member) => ({
     ...member,
@@ -57,8 +63,8 @@ export const familyProfileFormSchema = z.object({
     .positive("Budget harian harus lebih dari 0")
     .max(50_000_000, "Budget harian tidak wajar"),
   region: z.string().trim().min(3, "Wilayah wajib diisi"),
-  preferences: commaSeparatedList,
-  avoidedIngredients: commaSeparatedList,
+  preferences: stringList,
+  avoidedIngredients: stringList,
   members: z.array(familyMemberFormSchema).min(1, "Minimal 1 anggota keluarga"),
 });
 

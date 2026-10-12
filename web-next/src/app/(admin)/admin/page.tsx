@@ -27,7 +27,7 @@ export const metadata: Metadata = {
 
 /** FR-22: dashboard admin (statistik, harga pending, status scraper). */
 export default async function AdminDashboardPage() {
-  const stats = await getAdminStats(countUsers());
+  const stats = await getAdminStats(await countUsers());
   const pendingPrices = (await getAdminPrices()).filter((price) => price.status === "pending");
   const logs = (await getScraperLogs()).slice(0, 6);
 
@@ -118,7 +118,7 @@ export default async function AdminDashboardPage() {
 
         {/* Grafik scraper + aksi cepat */}
         <aside className="space-y-6">
-          <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm dark:border-stone-800 dark:bg-stone-900">
+          <section className="glass rounded-2xl p-5">
             <h2 className="text-sm font-semibold text-stone-900 dark:text-stone-50">
               Hasil Scraper Terakhir
             </h2>
@@ -146,7 +146,7 @@ export default async function AdminDashboardPage() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="flex items-center gap-3 rounded-xl border border-stone-200 bg-white p-3 transition hover:border-brand-300 hover:bg-brand-50/50 dark:border-stone-800 dark:bg-stone-900 dark:hover:bg-stone-800/60"
+                  className="glass-subtle lift flex items-center gap-3 rounded-xl p-3"
                 >
                   <span className="flex size-9 items-center justify-center rounded-lg bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-300">
                     <Icon className="size-4" aria-hidden="true" />

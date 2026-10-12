@@ -18,7 +18,7 @@ export function Skeleton({ className, ...props }: ComponentProps<"div">) {
 /** Skeleton kartu resep yang dipakai di loading.tsx & Suspense fallback. */
 export function RecipeCardSkeleton() {
   return (
-    <div className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm dark:border-stone-800 dark:bg-stone-900">
+    <div className="glass-subtle rounded-2xl p-5">
       <Skeleton className="mb-4 h-32 w-full" />
       <Skeleton className="mb-2 h-4 w-2/3" />
       <Skeleton className="mb-4 h-3 w-full" />

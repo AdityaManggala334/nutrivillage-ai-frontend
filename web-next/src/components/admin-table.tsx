@@ -30,7 +30,7 @@ export function AdminTable({
   readonly children: ReactNode;
 }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm dark:border-stone-800 dark:bg-stone-900">
+    <div className="glass overflow-hidden rounded-2xl">
       <div className="overflow-x-auto">
         <table className="w-full min-w-[720px] text-left text-sm">
           <thead className="border-b border-stone-200 bg-stone-50 dark:border-stone-800 dark:bg-stone-800/50">

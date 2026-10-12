@@ -40,7 +40,7 @@ export function AdminTopbar() {
   };
 
   return (
-    <header className="sticky top-0 z-30 border-b border-stone-200 bg-white/95 backdrop-blur dark:border-stone-800 dark:bg-stone-900/95">
+    <header className="glass sticky top-0 z-30 border-x-0 border-t-0 border-b border-white/50 dark:border-white/10">
       <div className="flex h-16 items-center justify-between gap-3 px-4 md:px-6">
         <div className="flex items-center gap-3">
           <button

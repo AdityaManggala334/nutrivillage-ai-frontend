@@ -36,6 +36,15 @@ export function middleware(request: NextRequest): NextResponse {
     }
   }
 
+  // RBAC: /sppg hanya untuk petugas SPPG (admin boleh meninjau).
+  const isSppgRoute = pathname === "/sppg" || pathname.startsWith("/sppg/");
+  if (isSppgRoute) {
+    const role = request.cookies.get(ROLE_COOKIE)?.value;
+    if (role !== "petugas_sppg" && role !== "admin") {
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
+  }
+
   const response = NextResponse.next();
   // Menandai request terautentikasi untuk observability/security header.
   response.headers.set("x-nutrivillage-session", "active");
@@ -54,5 +63,6 @@ export const config = {
     "/profile/:path*",
     "/notifications/:path*",
     "/admin/:path*",
+    "/sppg/:path*",
   ],
 };

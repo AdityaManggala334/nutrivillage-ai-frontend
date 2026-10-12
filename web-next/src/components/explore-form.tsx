@@ -173,7 +173,7 @@ export function ExploreForm({ onGenerate, isLoading }: ExploreFormProps) {
           {AGE_GROUP_ORDER.map((group) => (
             <div
               key={group}
-              className="flex items-center justify-between rounded-xl border border-stone-200 bg-white px-3 py-2 dark:border-stone-800 dark:bg-stone-900"
+              className="glass-subtle flex items-center justify-between rounded-xl px-3 py-2"
             >
               <span className="text-sm text-stone-700 dark:text-stone-200">
                 {AGE_GROUP_LABELS[group]}
