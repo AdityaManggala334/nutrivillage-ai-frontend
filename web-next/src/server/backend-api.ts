@@ -47,6 +47,34 @@ interface BackendAuthSession {
   readonly token: string;
 }
 
+const RETRYABLE_STATUS = new Set([502, 503, 504]);
+const FETCH_ATTEMPTS = 3;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * fetch dengan retry singkat. Backend free tier (Render) bisa "bangun" dari
+ * tidur (cold start) yang tampak sebagai error koneksi / 502-504.
+ */
+async function fetchWithRetry(url: string, init: RequestInit): Promise<Response> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= FETCH_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await fetch(url, init);
+      if (!RETRYABLE_STATUS.has(response.status) || attempt === FETCH_ATTEMPTS) {
+        return response;
+      }
+    } catch (error) {
+      lastError = error;
+      if (attempt === FETCH_ATTEMPTS) throw error;
+    }
+    await sleep(1500 * attempt);
+  }
+  throw lastError instanceof Error ? lastError : new Error("Gagal menghubungi backend");
+}
+
 async function backendFetch<T>(
   path: string,
   init: RequestInit = {},
@@ -60,14 +88,15 @@ async function backendFetch<T>(
 
   let response: Response;
   try {
-    response = await fetch(`${API_BASE_URL}${API_PREFIX}${path}`, {
+    response = await fetchWithRetry(`${API_BASE_URL}${API_PREFIX}${path}`, {
       ...init,
       headers,
       cache: "no-store",
     });
   } catch {
     throw new BackendError(
-      "Tidak dapat terhubung ke server backend. Pastikan FastAPI berjalan.",
+      "Server backend sedang tidak dapat dihubungi (mungkin baru menyala). " +
+        "Tunggu sebentar lalu coba lagi.",
       503,
     );
   }
