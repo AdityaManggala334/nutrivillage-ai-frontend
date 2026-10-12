@@ -48,7 +48,10 @@ interface BackendAuthSession {
 }
 
 const RETRYABLE_STATUS = new Set([502, 503, 504]);
-const FETCH_ATTEMPTS = 3;
+// Cukup 1 percobaan ulang dengan jeda pendek — retry panjang justru membuat
+// navigasi terasa lambat saat backend free tier sedang bangun (cold start).
+const FETCH_ATTEMPTS = 2;
+const RETRY_BASE_DELAY_MS = 800;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -70,7 +73,7 @@ async function fetchWithRetry(url: string, init: RequestInit): Promise<Response>
       lastError = error;
       if (attempt === FETCH_ATTEMPTS) throw error;
     }
-    await sleep(1500 * attempt);
+    await sleep(RETRY_BASE_DELAY_MS * attempt);
   }
   throw lastError instanceof Error ? lastError : new Error("Gagal menghubungi backend");
 }

@@ -378,22 +378,22 @@ export function AdminUsersManager() {
         </p>
       ) : (
         <div className="overflow-x-auto rounded-2xl glass">
-          <table className="w-full text-left text-sm">
+          <table className="w-full text-sm">
             <caption className="sr-only">Daftar pengguna</caption>
             <thead className="bg-white/50 text-[11px] tracking-wider text-stone-500 uppercase dark:bg-stone-900/40">
               <tr>
-                <th scope="col" className="px-4 py-3 font-semibold">Pengguna</th>
-                <th scope="col" className="px-4 py-3 font-semibold">Peran</th>
-                <th scope="col" className="px-4 py-3 font-semibold">Info</th>
-                <th scope="col" className="px-4 py-3 font-semibold">Status</th>
-                <th scope="col" className="px-4 py-3 text-right font-semibold">Aksi</th>
+                <th scope="col" className="px-4 py-3 text-center font-semibold">Pengguna</th>
+                <th scope="col" className="px-4 py-3 text-center font-semibold">Peran</th>
+                <th scope="col" className="px-4 py-3 text-center font-semibold">Info</th>
+                <th scope="col" className="px-4 py-3 text-center font-semibold">Status</th>
+                <th scope="col" className="px-4 py-3 text-center font-semibold">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/40 dark:divide-white/10">
               {visible.map((user) => (
                 <tr key={user.id} className="transition hover:bg-white/40 dark:hover:bg-stone-800/40">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
+                  <td className="px-4 py-3 text-center">
+                    <div className="flex items-center justify-center gap-2">
                       <span className="flex size-8 items-center justify-center rounded-full bg-brand-100 text-[11px] font-bold text-brand-800 dark:bg-brand-950 dark:text-brand-200">
                         {user.name.slice(0, 2).toUpperCase()}
                       </span>
@@ -403,14 +403,14 @@ export function AdminUsersManager() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-center">
                     <Badge tone={ROLE_TONE[user.role] ?? "neutral"}>
                       {user.role === "admin" ? <ShieldCheck className="size-3" aria-hidden="true" /> : null}
                       {user.role === "petugas_sppg" ? <Users className="size-3" aria-hidden="true" /> : null}
                       {ROLE_LABELS[user.role] ?? user.role}
                     </Badge>
                   </td>
-                  <td className="px-4 py-3 text-xs text-stone-500">
+                  <td className="px-4 py-3 text-center text-xs text-stone-500">
                     {user.sppgOfficer ? (
                       <>
                         <p className="font-medium text-stone-600 dark:text-stone-300">{user.sppgOfficer.sppgUnit}</p>
@@ -420,14 +420,14 @@ export function AdminUsersManager() {
                       <span className="text-stone-400">—</span>
                     )}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-center">
                     <Badge tone={user.isActive ? "brand" : "danger"}>
                       {user.isActive ? "Aktif" : "Nonaktif"}
                     </Badge>
                     <p className="mt-1 text-[10px] text-stone-400">{formatDateId(user.createdAt)}</p>
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-end gap-1">
+                  <td className="px-4 py-3 text-center">
+                    <div className="flex items-center justify-center gap-1">
                       <Button
                         intent="ghost"
                         size="sm"

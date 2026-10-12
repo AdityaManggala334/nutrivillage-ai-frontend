@@ -68,6 +68,21 @@ git push            # ke GitHub -> Vercel otomatis redeploy
 
 ---
 
+## 8. Keep-warm (agar tidak lambat)
+Backend Render free **tidur** setelah idle → request pertama 30–50 detik
+(terasa saat pindah menu admin). Cegah dengan cron gratis:
+
+1. Buka [cron-job.org](https://cron-job.org) → **Create cronjob**.
+2. URL: `https://<nama-backend>.onrender.com/health`
+3. Jadwal: **setiap 5–10 menit**.
+4. Simpan.
+
+> Tambahan: agar database TiDB juga tidak "scale-to-zero", ping juga sebuah
+> endpoint yang menyentuh DB secara berkala (mis. login percobaan) — atau
+> gunakan instance server selalu-nyala untuk hasil terbaik.
+
+---
+
 ## Troubleshooting
 | Gejala | Sebab / solusi |
 | --- | --- |
@@ -75,3 +90,4 @@ git push            # ke GitHub -> Vercel otomatis redeploy
 | Halaman 500 / "backend tidak dapat dihubungi" | `API_BASE_URL` salah, atau backend Render sedang bangun (cold start) — coba lagi |
 | Login berhasil tapi sesi hilang | `JWT_SECRET` tidak sama dengan backend |
 | Login pertama lambat | Cold start Render; tunggu beberapa detik lalu ulangi |
+| Navigasi admin terasa lambat | Cold start backend; pasang keep-warm (bagian 8) |
