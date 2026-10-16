@@ -17,6 +17,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       email: parsed.data.email,
       password: parsed.data.password,
       role: parsed.data.role,
+      phone: parsed.data.phone,
       nip: parsed.data.nip,
       sppgUnit: parsed.data.sppgUnit,
       region: parsed.data.region,

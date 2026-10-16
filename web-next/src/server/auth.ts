@@ -125,6 +125,8 @@ export interface RegisterUserInput {
   readonly email: string;
   readonly password: string;
   readonly role?: RegistrableRole;
+  /** Nomor HP opsional (10-15 digit) — disimpan pada `users.phone`. */
+  readonly phone?: string;
   readonly nip?: string;
   readonly sppgUnit?: string;
   readonly region?: string;
@@ -137,6 +139,7 @@ export async function registerUser(input: RegisterUserInput): Promise<AuthResult
     email: input.email,
     password: input.password,
     role: input.role ?? "user",
+    phone: input.phone,
     nip: input.nip,
     sppgUnit: input.sppgUnit,
     region: input.region,

@@ -161,6 +161,8 @@ export interface BackendRegisterInput {
   readonly email: string;
   readonly password: string;
   readonly role: "user" | "petugas_sppg";
+  /** Nomor HP opsional (10-15 digit). */
+  readonly phone?: string;
   readonly nip?: string;
   readonly sppgUnit?: string;
   readonly region?: string;
@@ -178,6 +180,7 @@ export async function backendRegister(
       password: input.password,
       confirm_password: input.password,
       role: input.role,
+      phone: input.phone,
       nip: input.nip,
       sppg_unit: input.sppgUnit,
       region: input.region,

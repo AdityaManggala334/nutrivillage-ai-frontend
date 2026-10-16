@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { isValidPhone } from "./account";
+
 /**
  * auth.ts
  * Validasi form autentikasi (FR-01 Registrasi, FR-02 Login) dan model user.
@@ -38,6 +40,13 @@ export const RegisterSchema = z
       .regex(/[0-9]/, "Password harus memuat angka"),
     confirmPassword: z.string().min(1, "Konfirmasi password wajib diisi"),
     role: RegistrableRoleSchema.default("user"),
+    /** Opsional (10-15 digit bila diisi). Bisa diubah di halaman Profil. */
+    phone: z
+      .string()
+      .trim()
+      .max(30, "Nomor HP terlalu panjang")
+      .refine(isValidPhone, "Nomor HP harus terdiri dari 10-15 digit angka")
+      .optional(),
 
     // Field khusus petugas SPPG MBG (wajib bila role = petugas_sppg).
     nip: z.string().trim().max(50, "NIP maksimal 50 karakter").optional(),

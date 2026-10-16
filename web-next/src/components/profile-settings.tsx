@@ -3,6 +3,7 @@
 import { Bell, Check, KeyRound, LogOut, Save, ShieldCheck, User, Users } from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
 import { Chip, optionsWith, toggleListItem } from "@/components/chip";
+import { PasswordChecklist } from "@/components/password-checklist";
 import {
   Badge,
   Button,
@@ -14,6 +15,7 @@ import {
   FieldError,
   Input,
   Label,
+  PasswordInput,
   Switch,
 } from "@/components/ui";
 import {
@@ -564,9 +566,8 @@ export function ProfileSettings() {
 
                 <div className="space-y-1.5">
                   <Label htmlFor="pwd-current">Password lama</Label>
-                  <Input
+                  <PasswordInput
                     id="pwd-current"
-                    type="password"
                     autoComplete="current-password"
                     value={currentPassword}
                     invalid={Boolean(pwdErrors.currentPassword)}
@@ -580,10 +581,10 @@ export function ProfileSettings() {
 
                 <div className="space-y-1.5">
                   <Label htmlFor="pwd-new">Password baru</Label>
-                  <Input
+                  <PasswordInput
                     id="pwd-new"
-                    type="password"
                     autoComplete="new-password"
+                    aria-describedby="pwd-new-rules"
                     value={newPassword}
                     invalid={Boolean(pwdErrors.newPassword)}
                     onChange={(event) => {
@@ -591,17 +592,14 @@ export function ProfileSettings() {
                       setPwdSaved(false);
                     }}
                   />
+                  <PasswordChecklist id="pwd-new-rules" value={newPassword} className="pt-0.5" />
                   <FieldError>{pwdErrors.newPassword}</FieldError>
-                  <p className="text-xs text-stone-500 dark:text-stone-400">
-                    Minimal 8 karakter dan memuat huruf + angka.
-                  </p>
                 </div>
 
                 <div className="space-y-1.5">
                   <Label htmlFor="pwd-confirm">Ulangi password baru</Label>
-                  <Input
+                  <PasswordInput
                     id="pwd-confirm"
-                    type="password"
                     autoComplete="new-password"
                     value={confirmPassword}
                     invalid={Boolean(pwdErrors.confirmPassword)}

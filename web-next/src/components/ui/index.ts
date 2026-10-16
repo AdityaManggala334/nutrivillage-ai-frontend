@@ -11,6 +11,7 @@ export {
 } from "./card";
 export { GlassCard, type GlassCardProps } from "./glass-card";
 export { Input, Textarea, Select, Label, FieldError } from "./input";
+export { PasswordInput, type PasswordInputProps } from "./password-input";
 export { Skeleton, RecipeCardSkeleton } from "./skeleton";
 export {
   Dialog,

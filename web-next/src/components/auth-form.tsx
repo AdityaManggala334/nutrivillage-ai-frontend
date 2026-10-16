@@ -1,8 +1,11 @@
 "use client";
 
+import { Check } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import { GuestLoginButton } from "@/components/guest-login-button";
-import { Button, FieldError, Input, Label } from "@/components/ui";
+import { PasswordChecklist } from "@/components/password-checklist";
+import { Button, FieldError, Input, Label, PasswordInput } from "@/components/ui";
 import { useLoginMutation, useRegisterMutation } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import {
@@ -43,18 +46,44 @@ const ROLE_CLASS = (isActive: boolean): string =>
       : "border-stone-200 bg-white text-stone-600 hover:border-brand-300 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-300",
   );
 
+/** Logo Google (SVG inline — tanpa menambah dependensi). */
+function GoogleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-4 shrink-0" aria-hidden="true">
+      <path
+        fill="#4285F4"
+        d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47a5.54 5.54 0 0 1-2.4 3.64v3h3.86c2.26-2.09 3.56-5.17 3.56-8.88z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09A11.99 11.99 0 0 0 12 24z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M5.27 14.29a7.2 7.2 0 0 1 0-4.58V6.62H1.29a11.99 11.99 0 0 0 0 10.76l3.98-3.09z"
+      />
+      <path
+        fill="#EA4335"
+        d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.7 0 3.99 2.47 1.29 6.62l3.98 3.09C6.22 6.86 8.87 4.75 12 4.75z"
+      />
+    </svg>
+  );
+}
+
 /** FR-01, FR-02, FR-03: halaman login, registrasi, dan mode tamu. */
 export function AuthForm() {
   const [mode, setMode] = useState<AuthMode>("login");
   const [serverError, setServerError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const [errors, setErrors] = useState<FormErrors>({});
 
-  const [loginEmail, setLoginEmail] = useState("keluarga@nutrivillage.id");
-  const [loginPassword, setLoginPassword] = useState("nutrivillage");
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
 
   const [regName, setRegName] = useState("");
   const [regEmail, setRegEmail] = useState("");
+  const [regPhone, setRegPhone] = useState("");
   const [regPassword, setRegPassword] = useState("");
   const [regConfirm, setRegConfirm] = useState("");
   const [regRole, setRegRole] = useState<RegistrableRole>("user");
@@ -71,6 +100,7 @@ export function AuthForm() {
     setErrors({});
     setServerError(null);
     setSuccessMessage(null);
+    setInfoMessage(null);
   };
 
   /**
@@ -88,22 +118,11 @@ export function AuthForm() {
     window.location.assign(target);
   };
 
-  /** Mengisi otomatis kredensial akun demo. */
-  const fillDemo = (role: "user" | "admin" | "sppg") => {
-    setMode("login");
-    setErrors({});
+  /** Login Google baru tersedia sebagai tampilan; OAuth menyusul. */
+  const handleGoogleLogin = () => {
     setServerError(null);
     setSuccessMessage(null);
-    if (role === "admin") {
-      setLoginEmail("admin@nutrivillage.id");
-      setLoginPassword("AdminVillage123");
-    } else if (role === "sppg") {
-      setLoginEmail("sppg@nutrivillage.id");
-      setLoginPassword("sppg12345");
-    } else {
-      setLoginEmail("keluarga@nutrivillage.id");
-      setLoginPassword("nutrivillage");
-    }
+    setInfoMessage("Login dengan Google belum aktif pada versi ini. Sementara itu, silakan masuk memakai email dan password.");
   };
 
   const handleLogin = (event: React.FormEvent<HTMLFormElement>) => {
@@ -115,6 +134,7 @@ export function AuthForm() {
     }
     setErrors({});
     setServerError(null);
+    setInfoMessage(null);
     loginMutation.mutate(result.data, {
       onSuccess: redirectAfterAuth,
       onError: (error) => setServerError(error.message),
@@ -126,6 +146,7 @@ export function AuthForm() {
     const result = RegisterSchema.safeParse({
       name: regName,
       email: regEmail,
+      phone: regPhone,
       password: regPassword,
       confirmPassword: regConfirm,
       role: regRole,
@@ -140,6 +161,7 @@ export function AuthForm() {
     }
     setErrors({});
     setServerError(null);
+    setInfoMessage(null);
     registerMutation.mutate(result.data, {
       onSuccess: () => {
         // FR-01: tidak auto-login. Kembali ke tab Masuk dengan form kosong.
@@ -194,38 +216,6 @@ export function AuthForm() {
             </button>
           </div>
 
-          {/* Info akun demo (untuk pengujian) */}
-          <div className="mt-4 rounded-xl border border-dashed border-brand-300 bg-brand-50/60 p-3 dark:border-brand-800 dark:bg-brand-950/30">
-            <p className="text-xs font-semibold text-brand-800 dark:text-brand-200">
-              Akun Demo
-            </p>
-            <div className="mt-1.5 space-y-1 text-xs text-stone-600 dark:text-stone-300">
-              <p>
-                Masyarakat — <span className="font-mono">keluarga@nutrivillage.id</span> /{" "}
-                <span className="font-mono">nutrivillage</span>
-              </p>
-              <p>
-                Petugas SPPG — <span className="font-mono">sppg@nutrivillage.id</span> /{" "}
-                <span className="font-mono">sppg12345</span>
-              </p>
-              <p>
-                Admin — <span className="font-mono">admin@nutrivillage.id</span> /{" "}
-                <span className="font-mono">AdminVillage123</span>
-              </p>
-            </div>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <Button type="button" size="sm" intent="secondary" onClick={() => fillDemo("user")}>
-                Isi akun Masyarakat
-              </Button>
-              <Button type="button" size="sm" intent="secondary" onClick={() => fillDemo("sppg")}>
-                Isi akun SPPG
-              </Button>
-              <Button type="button" size="sm" intent="outline" onClick={() => fillDemo("admin")}>
-                Isi akun Admin
-              </Button>
-            </div>
-          </div>
-
           <div role="tabpanel" aria-label={mode === "login" ? "Form masuk" : "Form pendaftaran"}>
             {serverError ? (
               <div
@@ -247,15 +237,44 @@ export function AuthForm() {
               </div>
             ) : null}
 
+            {infoMessage ? (
+              <div
+                role="status"
+                aria-live="polite"
+                className="mt-6 rounded-xl bg-stone-100 px-4 py-3 text-sm text-stone-600 dark:bg-stone-800/70 dark:text-stone-300"
+              >
+                {infoMessage}
+              </div>
+            ) : null}
+
             {mode === "login" ? (
               <form onSubmit={handleLogin} noValidate className="mt-6 space-y-4">
+                <Button
+                  type="button"
+                  intent="outline"
+                  size="lg"
+                  fullWidth
+                  onClick={handleGoogleLogin}
+                  className="justify-center gap-2.5"
+                >
+                  <GoogleIcon />
+                  Masuk dengan Google
+                </Button>
+
+                <div className="flex items-center gap-3" role="presentation">
+                  <span className="h-px flex-1 bg-stone-200 dark:bg-stone-700" />
+                  <span className="text-xs text-stone-400">atau</span>
+                  <span className="h-px flex-1 bg-stone-200 dark:bg-stone-700" />
+                </div>
+
                 <div className="space-y-1.5">
                   <Label htmlFor="login-email">Email</Label>
                   <Input
                     id="login-email"
-                    name="email"
+                    name="username"
                     type="email"
-                    autoComplete="email"
+                    inputMode="email"
+                    autoComplete="username"
                     placeholder="nama@email.com"
                     value={loginEmail}
                     invalid={Boolean(errors.email)}
@@ -263,20 +282,29 @@ export function AuthForm() {
                   />
                   <FieldError>{errors.email}</FieldError>
                 </div>
+
                 <div className="space-y-1.5">
-                  <Label htmlFor="login-password">Password</Label>
-                  <Input
+                  <div className="flex items-center justify-between gap-2">
+                    <Label htmlFor="login-password">Password</Label>
+                    <Link
+                      href="/lupa-password"
+                      className="text-xs font-semibold text-brand-700 hover:underline dark:text-brand-300"
+                    >
+                      Lupa password?
+                    </Link>
+                  </div>
+                  <PasswordInput
                     id="login-password"
                     name="password"
-                    type="password"
                     autoComplete="current-password"
-                    placeholder="Minimal 8 karakter"
+                    placeholder="Masukkan password Anda"
                     value={loginPassword}
                     invalid={Boolean(errors.password)}
                     onChange={(event) => setLoginPassword(event.target.value)}
                   />
                   <FieldError>{errors.password}</FieldError>
                 </div>
+
                 <Button type="submit" size="lg" fullWidth loading={isBusy}>
                   Masuk
                 </Button>
@@ -387,6 +415,7 @@ export function AuthForm() {
                     id="register-email"
                     name="email"
                     type="email"
+                    inputMode="email"
                     autoComplete="email"
                     placeholder="nama@email.com"
                     value={regEmail}
@@ -395,35 +424,65 @@ export function AuthForm() {
                   />
                   <FieldError>{errors.email}</FieldError>
                 </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="register-phone">Nomor HP (opsional)</Label>
+                  <Input
+                    id="register-phone"
+                    name="phone"
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    placeholder="Contoh: 081234567890"
+                    value={regPhone}
+                    invalid={Boolean(errors.phone)}
+                    onChange={(event) => setRegPhone(event.target.value)}
+                  />
+                  <FieldError>{errors.phone}</FieldError>
+                  <p className="text-xs text-stone-500 dark:text-stone-400">
+                    10-15 digit angka. Bisa diisi atau diubah nanti di halaman Profil.
+                  </p>
+                </div>
+
                 <div className="space-y-1.5">
                   <Label htmlFor="register-password">Password</Label>
-                  <Input
+                  <PasswordInput
                     id="register-password"
                     name="password"
-                    type="password"
                     autoComplete="new-password"
-                    placeholder="Minimal 8 karakter, memuat huruf & angka"
+                    aria-describedby="register-password-rules"
+                    placeholder="Buat password"
                     value={regPassword}
                     invalid={Boolean(errors.password)}
                     onChange={(event) => setRegPassword(event.target.value)}
                   />
-                  <p className="text-xs text-stone-500">Gunakan kombinasi huruf dan angka.</p>
+                  <PasswordChecklist
+                    id="register-password-rules"
+                    value={regPassword}
+                    className="pt-0.5"
+                  />
                   <FieldError>{errors.password}</FieldError>
                 </div>
+
                 <div className="space-y-1.5">
                   <Label htmlFor="register-confirm">Konfirmasi Password</Label>
-                  <Input
+                  <PasswordInput
                     id="register-confirm"
                     name="confirmPassword"
-                    type="password"
                     autoComplete="new-password"
                     placeholder="Ulangi password"
                     value={regConfirm}
                     invalid={Boolean(errors.confirmPassword)}
                     onChange={(event) => setRegConfirm(event.target.value)}
                   />
+                  {regConfirm.length > 0 && regPassword === regConfirm ? (
+                    <p className="flex items-center gap-1 text-xs font-medium text-brand-700 dark:text-brand-300">
+                      <Check className="size-3.5" aria-hidden="true" /> Password sudah sama
+                    </p>
+                  ) : null}
                   <FieldError>{errors.confirmPassword}</FieldError>
                 </div>
+
                 <Button type="submit" size="lg" fullWidth loading={isBusy}>
                   Buat Akun
                 </Button>
