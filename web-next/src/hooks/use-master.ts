@@ -11,7 +11,10 @@ export type MasterResource =
   | "recipes"
   | "seasons"
   | "local"
-  | "regions";
+  | "regions"
+  | "prices"
+  | "food-safety"
+  | "articles";
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {

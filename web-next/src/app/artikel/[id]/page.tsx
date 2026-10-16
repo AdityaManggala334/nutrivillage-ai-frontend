@@ -5,15 +5,26 @@ import { notFound } from "next/navigation";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { Badge } from "@/components/ui";
-import { getArticleById } from "@/server/content-data";
+import { getArticleById } from "@/server/content-api";
+import type { Article } from "@/schemas/content";
 
 interface ArticlePageProps {
   readonly params: Promise<{ id: string }>;
 }
 
+/** null bila artikel tidak ada ATAU backend sedang tidak tersedia. */
+async function safeArticle(id: string): Promise<Article | null> {
+  try {
+    return await getArticleById(id);
+  } catch (error) {
+    console.error("[artikel] gagal memuat artikel:", error);
+    return null;
+  }
+}
+
 export async function generateMetadata({ params }: ArticlePageProps): Promise<Metadata> {
   const { id } = await params;
-  const article = await getArticleById(id);
+  const article = await safeArticle(id);
   if (!article) return { title: "Artikel tidak ditemukan", robots: { index: false } };
   return {
     title: article.title,
@@ -26,7 +37,7 @@ export async function generateMetadata({ params }: ArticlePageProps): Promise<Me
 /** FR-03: detail artikel gizi (publik). */
 export default async function ArticleDetailPage({ params }: ArticlePageProps) {
   const { id } = await params;
-  const article = await getArticleById(id);
+  const article = await safeArticle(id);
   if (!article) notFound();
 
   return (

@@ -82,13 +82,22 @@ export function AdminCell({
   );
 }
 
-export type AdminStatus = "pending" | "approved" | "rejected" | "success" | "failed";
+export type AdminStatus =
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "success"
+  | "partial"
+  | "failed"
+  | "verified";
 
 const STATUS_MAP: Record<AdminStatus, { tone: "harvest" | "brand" | "danger"; label: string }> = {
   pending: { tone: "harvest", label: "Pending" },
   approved: { tone: "brand", label: "Disetujui" },
   rejected: { tone: "danger", label: "Ditolak" },
+  verified: { tone: "brand", label: "Terverifikasi" },
   success: { tone: "brand", label: "Berhasil" },
+  partial: { tone: "harvest", label: "Sebagian" },
   failed: { tone: "danger", label: "Gagal" },
 };
 

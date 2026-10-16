@@ -407,7 +407,10 @@ export type AdminMasterResource =
   | "recipes"
   | "seasons"
   | "local"
-  | "regions";
+  | "regions"
+  | "prices"
+  | "food-safety"
+  | "articles";
 
 export async function backendAdminList(
   token: string,
@@ -621,6 +624,190 @@ export async function backendSetHistoryFavorite(
   return backendFetch<BackendHistoryEntry>(
     `/history/${id}`,
     { method: "PATCH", body: JSON.stringify({ favorite }) },
+    token,
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Harga pangan, scraper & statistik admin                             */
+/* ------------------------------------------------------------------ */
+
+export interface BackendPrice {
+  readonly id: number;
+  readonly ingredient_id: number;
+  readonly ingredient_name: string;
+  readonly region_id: number | null;
+  readonly price: number;
+  readonly unit: string;
+  readonly recorded_date: string;
+  readonly source_type: string;
+  readonly source: string;
+  readonly status: string;
+  readonly created_at: string;
+}
+
+export async function backendListPrices(token: string): Promise<BackendPrice[]> {
+  return backendFetch<BackendPrice[]>("/admin/prices", { method: "GET" }, token);
+}
+
+export async function backendVerifyPrice(
+  token: string,
+  priceId: number,
+  status: string,
+  note?: string,
+): Promise<BackendPrice> {
+  return backendFetch<BackendPrice>(
+    `/admin/prices/${priceId}/verify`,
+    { method: "POST", body: JSON.stringify({ status, note: note ?? null }) },
+    token,
+  );
+}
+
+export interface BackendScraperRun {
+  readonly id: number;
+  readonly source: string;
+  readonly scheduled_at: string | null;
+  readonly started_at: string | null;
+  readonly finished_at: string | null;
+  readonly status: string;
+  readonly items_count: number;
+  readonly error_message: string | null;
+}
+
+export async function backendListScraperRuns(token: string): Promise<BackendScraperRun[]> {
+  return backendFetch<BackendScraperRun[]>("/admin/scraper-runs", { method: "GET" }, token);
+}
+
+export interface BackendAdminStats {
+  readonly ingredients: number;
+  readonly recipes: number;
+  readonly pending_prices: number;
+  readonly approved_prices: number;
+  readonly users: number;
+  readonly scraper_failures: number;
+}
+
+export async function backendAdminStats(token: string): Promise<BackendAdminStats> {
+  return backendFetch<BackendAdminStats>("/admin/stats", { method: "GET" }, token);
+}
+
+/* ------------------------------------------------------------------ */
+/* Keamanan pangan & artikel & notifikasi                              */
+/* ------------------------------------------------------------------ */
+
+export interface BackendFoodSafety {
+  readonly id: number;
+  readonly code: string | null;
+  readonly topic: string;
+  readonly risk_type: string;
+  readonly hazard: string;
+  readonly handling: string;
+  readonly source: string;
+  readonly verification: string;
+}
+
+/** Publik: hanya entri yang sudah diverifikasi admin. */
+export async function backendListVerifiedFoodSafety(): Promise<BackendFoodSafety[]> {
+  return backendFetch<BackendFoodSafety[]>("/food-safety", { method: "GET" });
+}
+
+export interface BackendArticle {
+  readonly id: number;
+  readonly code: string | null;
+  readonly title: string;
+  readonly excerpt: string;
+  readonly category: string;
+  readonly read_minutes: number;
+  readonly body: string[];
+  readonly created_at: string;
+}
+
+export async function backendListArticles(): Promise<BackendArticle[]> {
+  return backendFetch<BackendArticle[]>("/articles", { method: "GET" });
+}
+
+export async function backendGetArticle(
+  id: number | string,
+): Promise<BackendArticle | null> {
+  try {
+    return await backendFetch<BackendArticle>(`/articles/${id}`, { method: "GET" });
+  } catch (error) {
+    // 404 = artikel tidak ada; biarkan pemanggil memanggil notFound().
+    if (error instanceof BackendError && error.status === 404) return null;
+    throw error;
+  }
+}
+
+export interface BackendNotification {
+  readonly id: number;
+  readonly user_id: number | null;
+  readonly title: string;
+  readonly message: string;
+  readonly kind: string;
+  readonly read: boolean;
+  readonly created_at: string;
+}
+
+/**
+ * Daftar notifikasi. Token bersifat opsional: tanpa sesi backend tetap
+ * menerima notifikasi global.
+ */
+export async function backendListNotifications(
+  token?: string,
+): Promise<BackendNotification[]> {
+  return backendFetch<BackendNotification[]>(
+    "/notifications",
+    { method: "GET" },
+    token || undefined,
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Akun halaman Profil (FR-02)                                         */
+/* ------------------------------------------------------------------ */
+
+export interface BackendAccount {
+  readonly id: number;
+  readonly name: string;
+  readonly email: string;
+  readonly phone: string | null;
+  readonly role: string;
+  readonly created_at: string;
+  readonly notifications_enabled: boolean;
+}
+
+export async function backendGetAccount(token: string): Promise<BackendAccount> {
+  return backendFetch<BackendAccount>("/account", { method: "GET" }, token);
+}
+
+export interface BackendAccountInput {
+  readonly name?: string;
+  readonly phone?: string | null;
+  readonly notifications_enabled?: boolean;
+}
+
+export async function backendUpdateAccount(
+  token: string,
+  input: BackendAccountInput,
+): Promise<BackendAccount> {
+  return backendFetch<BackendAccount>(
+    "/account",
+    { method: "PATCH", body: JSON.stringify(input) },
+    token,
+  );
+}
+
+export async function backendChangePassword(
+  token: string,
+  input: {
+    readonly current_password: string;
+    readonly new_password: string;
+    readonly confirm_password: string;
+  },
+): Promise<void> {
+  await backendFetch<undefined>(
+    "/account/password",
+    { method: "PUT", body: JSON.stringify(input) },
     token,
   );
 }

@@ -18,7 +18,7 @@ export const AdminIngredientSchema = z.object({
 export type AdminIngredient = z.infer<typeof AdminIngredientSchema>;
 
 export const AdminPriceSchema = z.object({
-  id: z.string().min(1),
+  id: z.number().int().positive(),
   ingredientName: z.string().min(1),
   price: z.number().nonnegative(),
   unit: z.string().min(1),
@@ -55,9 +55,9 @@ export const LocalCommoditySchema = z.object({
 export type LocalCommodity = z.infer<typeof LocalCommoditySchema>;
 
 export const ScraperLogSchema = z.object({
-  id: z.string().min(1),
+  id: z.number().int().positive(),
   runAt: z.string().min(1),
-  status: z.enum(["success", "failed"]),
+  status: z.enum(["success", "partial", "failed"]),
   source: z.string().min(1),
   message: z.string().min(1),
   itemsScraped: z.number().int().nonnegative(),
@@ -82,7 +82,7 @@ export const FoodSafetyVerificationSchema = z.enum(["pending", "verified", "reje
 export type FoodSafetyVerification = z.infer<typeof FoodSafetyVerificationSchema>;
 
 export const FoodSafetyInfoSchema = z.object({
-  id: z.string().min(1),
+  id: z.number().int().positive(),
   /** Bahan atau konteks resep yang terkait. */
   topic: z.string().min(1),
   riskType: z.string().min(1),

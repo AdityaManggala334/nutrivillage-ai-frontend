@@ -2,7 +2,15 @@
 
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { type FormEvent, type ReactNode, useState } from "react";
-import { AdminCell, AdminPageHeader, AdminTable } from "@/components/admin-table";
+import { AdminFoodSafetyActions } from "@/components/admin-food-safety-actions";
+import { AdminPriceActions } from "@/components/admin-price-actions";
+import {
+  AdminCell,
+  AdminPageHeader,
+  AdminStatusBadge,
+  AdminTable,
+  type AdminStatus,
+} from "@/components/admin-table";
 import { Badge, Button, Dialog, DialogContent, DialogHeader, DialogTitle, FieldError, Input, Label, Select, Textarea } from "@/components/ui";
 import {
   useMasterCreate,
@@ -12,6 +20,8 @@ import {
   type MasterResource,
   type MasterRow,
 } from "@/hooks/use-master";
+import { formatDateId, formatRupiah } from "@/lib/utils";
+import type { FoodSafetyVerification, PriceStatus } from "@/schemas/admin";
 
 /* ------------------------------------------------------------------ */
 /* Label bantu                                                         */
@@ -31,6 +41,12 @@ const LOCAL_LEVEL: Record<string, string> = {
   available: "Tersedia",
   limited: "Terbatas",
 };
+const ARTICLE_CATEGORIES = ["Gizi Dasar", "Pangan Lokal", "Tips Hemat", "Kesehatan"];
+const FOOD_SAFETY_VERIFICATION: Record<string, string> = {
+  pending: "Menunggu verifikasi",
+  verified: "Terverifikasi",
+  rejected: "Ditolak",
+};
 
 type Ctx = {
   readonly ingredientName: (id: unknown) => string;
@@ -42,7 +58,7 @@ type Ctx = {
 type Field = {
   readonly name: string;
   readonly label: string;
-  readonly type: "text" | "number" | "textarea" | "select" | "checkbox" | "list";
+  readonly type: "text" | "number" | "textarea" | "select" | "checkbox" | "list" | "date";
   readonly options?: readonly { value: string; label: string }[];
   readonly required?: boolean;
   readonly placeholder?: string;
@@ -58,6 +74,8 @@ interface FlatConfig {
   readonly idOf: (row: MasterRow) => number | string;
   /** true = create/update memakai PUT (upsert), mis. nutrisi. */
   readonly upsert?: boolean;
+  /** Aksi tambahan di kolom Aksi (mis. tombol verifikasi harga). */
+  readonly extraActions?: (row: MasterRow, ctx: Ctx) => ReactNode;
 }
 
 function checkboxCell(value: unknown): ReactNode {
@@ -148,6 +166,131 @@ const FLAT_CONFIG: Partial<Record<MasterResource, FlatConfig>> = {
     empty: { ingredient_id: "", calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, source: "TKPI Kemenkes RI" },
     idOf: (r) => Number(r.ingredient_id),
   },
+  prices: {
+    title: "Harga Pangan",
+    description:
+      "Data harga bahan. Masukkan harga manual atau hasil scraper, lalu verifikasi agar boleh dipakai Recommendation Engine.",
+    columns: [
+      { header: "Bahan", render: (r) => <span className="font-medium">{String(r.ingredient_name)}</span> },
+      { header: "Harga", render: (r) => `${formatRupiah(Number(r.price))} / ${String(r.unit)}` },
+      { header: "Sumber", render: (r) => String(r.source) },
+      { header: "Tanggal", render: (r) => formatDateId(String(r.recorded_date)) },
+      { header: "Status", render: (r) => <AdminStatusBadge status={String(r.status) as AdminStatus} /> },
+    ],
+    fields: [
+      { name: "ingredient_id", label: "Bahan", type: "select", required: true, options: [] },
+      { name: "price", label: "Harga (Rp)", type: "number", required: true },
+      { name: "unit", label: "Satuan", type: "text", placeholder: "kg / ikat / liter", required: true },
+      { name: "source", label: "Sumber data", type: "text", required: true, placeholder: "Pasar Madiun / Portal Pasar" },
+      { name: "recorded_date", label: "Tanggal pencatatan", type: "date" },
+    ],
+    empty: {
+      ingredient_id: "",
+      price: 0,
+      unit: "kg",
+      source: "",
+      recorded_date: new Date().toISOString().slice(0, 10),
+    },
+    idOf: (r) => Number(r.id),
+    extraActions: (r) => (
+      <AdminPriceActions id={Number(r.id)} status={String(r.status) as PriceStatus} />
+    ),
+  },
+  "food-safety": {
+    title: "Keamanan Pangan",
+    description:
+      "Kelola penjelasan bahaya & panduan penanganan. Hanya entri terverifikasi yang ditampilkan kepada pengguna.",
+    columns: [
+      {
+        header: "Konteks",
+        render: (r) => (
+          <div className="min-w-0">
+            <p className="font-semibold">{String(r.topic)}</p>
+            <p className="mt-1 max-w-md text-xs text-stone-500">{String(r.hazard)}</p>
+          </div>
+        ),
+      },
+      { header: "Jenis risiko", render: (r) => String(r.risk_type) },
+      {
+        header: "Status",
+        render: (r) => (
+          <Badge tone={r.verification === "verified" ? "brand" : r.verification === "rejected" ? "danger" : "harvest"}>
+            {FOOD_SAFETY_VERIFICATION[String(r.verification)] ?? String(r.verification)}
+          </Badge>
+        ),
+      },
+      { header: "Sumber", render: (r) => <span className="text-xs text-stone-500">{String(r.source)}</span> },
+    ],
+    fields: [
+      { name: "topic", label: "Bahan / konteks", type: "text", required: true },
+      { name: "risk_type", label: "Jenis risiko", type: "text", required: true },
+      { name: "hazard", label: "Bahaya", type: "textarea", required: true },
+      { name: "handling", label: "Panduan penanganan", type: "textarea", required: true },
+      { name: "source", label: "Sumber", type: "text", required: true },
+      {
+        name: "verification",
+        label: "Status verifikasi",
+        type: "select",
+        options: Object.entries(FOOD_SAFETY_VERIFICATION).map(([value, label]) => ({ value, label })),
+      },
+    ],
+    empty: {
+      topic: "",
+      risk_type: "",
+      hazard: "",
+      handling: "",
+      source: "",
+      verification: "pending",
+    },
+    idOf: (r) => Number(r.id),
+    extraActions: (r) => (
+      <AdminFoodSafetyActions
+        id={Number(r.id)}
+        verification={String(r.verification) as FoodSafetyVerification}
+      />
+    ),
+  },
+  articles: {
+    title: "Artikel Gizi",
+    description:
+      "Artikel edukasi yang tampil di halaman publik /artikel. Satu paragraf per baris pada kolom isi.",
+    columns: [
+      { header: "Judul", render: (r) => <span className="font-medium">{String(r.title)}</span> },
+      { header: "Kategori", render: (r) => <Badge tone="neutral">{String(r.category)}</Badge> },
+      { header: "Menit baca", render: (r) => `${r.read_minutes ?? 1}` },
+      {
+        header: "Ringkasan",
+        render: (r) => <span className="line-clamp-2 text-xs text-stone-500">{String(r.excerpt)}</span>,
+      },
+    ],
+    fields: [
+      { name: "title", label: "Judul", type: "text", required: true },
+      { name: "excerpt", label: "Ringkasan", type: "textarea", required: true },
+      {
+        name: "category",
+        label: "Kategori",
+        type: "select",
+        required: true,
+        options: ARTICLE_CATEGORIES.map((c) => ({ value: c, label: c })),
+      },
+      { name: "read_minutes", label: "Menit baca", type: "number", required: true },
+      {
+        name: "body",
+        label: "Isi artikel (satu paragraf per baris)",
+        type: "list",
+        required: true,
+        placeholder: "Paragraf pertama\nParagraf kedua",
+      },
+    ],
+    empty: {
+      title: "",
+      excerpt: "",
+      category: "Gizi Dasar",
+      read_minutes: 3,
+      body: [],
+    },
+    idOf: (r) => Number(r.id),
+  },
 };
 
 /* ------------------------------------------------------------------ */
@@ -200,6 +343,15 @@ function FieldInput({
       />
     );
   }
+  if (field.type === "date") {
+    return (
+      <Input
+        type="date"
+        value={value === null || value === undefined ? "" : String(value)}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    );
+  }
   return (
     <Input
       type={field.type === "number" ? "number" : "text"}
@@ -215,7 +367,14 @@ function FieldInput({
 /* ------------------------------------------------------------------ */
 /* Komponen utama                                                      */
 /* ------------------------------------------------------------------ */
-export function AdminMasterManager({ resource }: { readonly resource: MasterResource }) {
+export function AdminMasterManager({
+  resource,
+  note,
+}: {
+  readonly resource: MasterResource;
+  /** Konten tambahan (mis. catatan kebijakan) di bawah judul halaman. */
+  readonly note?: ReactNode;
+}) {
   const listQuery = useMasterList(resource);
   const ingredientsQuery = useMasterList("ingredients");
   const regionsQuery = useMasterList("regions");
@@ -256,7 +415,12 @@ export function AdminMasterManager({ resource }: { readonly resource: MasterReso
     event.preventDefault();
     setFormError(null);
     if (!config) return;
-    const missing = config.fields.find((f) => f.required && (values[f.name] === "" || values[f.name] === undefined || values[f.name] === null));
+    const missing = config.fields.find((f) => {
+      if (!f.required) return false;
+      const raw = values[f.name];
+      if (Array.isArray(raw)) return raw.length === 0;
+      return raw === "" || raw === undefined || raw === null;
+    });
     if (missing) {
       setFormError(`${missing.label} wajib diisi.`);
       return;
@@ -307,6 +471,8 @@ export function AdminMasterManager({ resource }: { readonly resource: MasterReso
         }
       />
 
+      {note}
+
       {listQuery.isLoading ? (
         <p className="glass rounded-2xl px-4 py-6 text-center text-sm text-stone-500">Memuat data…</p>
       ) : listQuery.isError ? (
@@ -325,7 +491,8 @@ export function AdminMasterManager({ resource }: { readonly resource: MasterReso
                 <AdminCell key={col.header}>{col.render(row, ctx)}</AdminCell>
               ))}
               <AdminCell>
-                <div className="flex items-center justify-center gap-1">
+                <div className="flex flex-wrap items-center justify-center gap-1">
+                  {config?.extraActions ? config.extraActions(row, ctx) : null}
                   <Button intent="ghost" size="sm" className="text-xs" onClick={() => openEdit(row)}>
                     <Pencil className="size-3.5" aria-hidden="true" /> Ubah
                   </Button>

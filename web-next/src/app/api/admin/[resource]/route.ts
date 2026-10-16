@@ -16,6 +16,9 @@ const RESOURCES = new Set<string>([
   "seasons",
   "local",
   "regions",
+  "prices",
+  "food-safety",
+  "articles",
 ]);
 
 interface RouteContext {

@@ -4,7 +4,8 @@ import { EmptyState } from "@/components/empty-state";
 import { SectionHeading } from "@/components/section-heading";
 import { Badge } from "@/components/ui";
 import { formatDateId } from "@/lib/utils";
-import { getNotifications } from "@/server/content-data";
+import { getNotifications } from "@/server/content-api";
+import type { Notification } from "@/schemas/content";
 
 export const metadata: Metadata = {
   title: "Notifikasi",
@@ -22,7 +23,26 @@ const KIND = {
 
 /** FR-21: halaman notifikasi pengguna. */
 export default async function NotificationsPage() {
-  const notifications = await getNotifications();
+  let notifications: Notification[] = [];
+  let loadError: string | null = null;
+  try {
+    notifications = await getNotifications();
+  } catch (error) {
+    loadError = error instanceof Error ? error.message : "Gagal memuat notifikasi.";
+  }
+
+  if (loadError) {
+    return (
+      <div className="space-y-5">
+        <SectionHeading
+          eyebrow="Pemberitahuan"
+          title="Notifikasi"
+          description="Informasi terbaru seputar rekomendasi, harga bahan, dan jadwal masak."
+        />
+        <EmptyState title="Notifikasi belum dapat dimuat" description={loadError} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">

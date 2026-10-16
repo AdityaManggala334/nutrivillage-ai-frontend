@@ -3,7 +3,7 @@ import { z } from "zod";
 /** Konten publik: artikel gizi (FR-03) dan notifikasi pengguna (FR-21). */
 
 export const ArticleSchema = z.object({
-  id: z.string().min(1),
+  id: z.number().int().positive(),
   title: z.string().min(1),
   excerpt: z.string().min(1),
   category: z.string().min(1),
@@ -13,7 +13,7 @@ export const ArticleSchema = z.object({
 export type Article = z.infer<typeof ArticleSchema>;
 
 export const NotificationSchema = z.object({
-  id: z.string().min(1),
+  id: z.number().int().positive(),
   title: z.string().min(1),
   message: z.string().min(1),
   createdAt: z.string().min(1),

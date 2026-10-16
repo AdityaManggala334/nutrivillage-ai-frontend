@@ -1,18 +1,19 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { Check, X } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui";
 import type { FoodSafetyVerification } from "@/schemas/admin";
 
 export interface AdminFoodSafetyActionsProps {
-  readonly id: string;
+  readonly id: number;
   readonly verification: FoodSafetyVerification;
 }
 
 /** Verifikasi informasi keamanan pangan (setujui / tolak) oleh admin. */
 export function AdminFoodSafetyActions({ id, verification }: AdminFoodSafetyActionsProps) {
-  const [current, setCurrent] = useState<FoodSafetyVerification>(verification);
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState<FoodSafetyVerification | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,8 +26,15 @@ export function AdminFoodSafetyActions({ id, verification }: AdminFoodSafetyActi
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ verification: next }),
       });
-      if (!response.ok) throw new Error("Gagal memperbarui status");
-      setCurrent(next);
+      if (!response.ok) {
+        const body: unknown = await response.json().catch(() => null);
+        const message =
+          typeof body === "object" && body !== null && "message" in body
+            ? String((body as { message: unknown }).message)
+            : "Gagal memperbarui status";
+        throw new Error(message);
+      }
+      await queryClient.invalidateQueries({ queryKey: ["admin-master", "food-safety"] });
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Gagal");
     } finally {
@@ -34,16 +42,16 @@ export function AdminFoodSafetyActions({ id, verification }: AdminFoodSafetyActi
     }
   };
 
-  if (current !== "pending") {
+  if (verification !== "pending") {
     return (
       <span
         className={
-          current === "verified"
+          verification === "verified"
             ? "text-xs font-semibold text-brand-700"
             : "text-xs font-semibold text-red-600"
         }
       >
-        {current === "verified" ? "Terverifikasi" : "Ditolak"}
+        {verification === "verified" ? "Terverifikasi" : "Ditolak"}
       </span>
     );
   }

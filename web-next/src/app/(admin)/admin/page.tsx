@@ -17,19 +17,48 @@ import { AdminStatCard } from "@/components/admin-stat-card";
 import { AdminCell, AdminPageHeader, AdminStatusBadge, AdminTable } from "@/components/admin-table";
 import { ButtonLink } from "@/components/ui";
 import { formatDateId, formatRupiah } from "@/lib/utils";
-import { getAdminPrices, getAdminStats, getScraperLogs } from "@/server/admin-data";
-import { countUsers } from "@/server/auth";
+import {
+  adminStatsForSession,
+  listPricesForSession,
+  listScraperLogsForSession,
+} from "@/server/market-api";
+import type { AdminPrice, AdminStats, ScraperLog } from "@/schemas/admin";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Dashboard Admin",
   robots: { index: false, follow: false },
 };
 
+const EMPTY_STATS: AdminStats = {
+  ingredients: 0,
+  recipes: 0,
+  pendingPrices: 0,
+  approvedPrices: 0,
+  users: 0,
+  scraperFailures: 0,
+};
+
 /** FR-22: dashboard admin (statistik, harga pending, status scraper). */
 export default async function AdminDashboardPage() {
-  const stats = await getAdminStats(await countUsers());
-  const pendingPrices = (await getAdminPrices()).filter((price) => price.status === "pending");
-  const logs = (await getScraperLogs()).slice(0, 6);
+  let stats: AdminStats = EMPTY_STATS;
+  let pendingPrices: AdminPrice[] = [];
+  let logs: ScraperLog[] = [];
+  let loadError: string | null = null;
+
+  try {
+    const [statsRaw, pricesRaw, logsRaw] = await Promise.all([
+      adminStatsForSession(),
+      listPricesForSession(),
+      listScraperLogsForSession(),
+    ]);
+    stats = statsRaw;
+    pendingPrices = pricesRaw.filter((price) => price.status === "pending");
+    logs = logsRaw.slice(0, 6);
+  } catch (error) {
+    loadError = error instanceof Error ? error.message : "Gagal memuat data dashboard.";
+  }
 
   const cards = [
     { label: "Bahan Pangan", value: stats.ingredients, icon: <Salad className="size-4" aria-hidden="true" />, accent: "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-300" },
@@ -49,6 +78,12 @@ export default async function AdminDashboardPage() {
 
   return (
     <div className="space-y-6">
+      {loadError ? (
+        <p className="rounded-xl bg-red-50 px-4 py-3 text-xs text-red-700 dark:bg-red-950/50 dark:text-red-300">
+          Sebagian data dashboard tidak dapat dimuat: {loadError}
+        </p>
+      ) : null}
+
       <AdminPageHeader
         title="Dashboard Admin"
         description="Ringkasan data master, verifikasi harga, dan status scraper NutriVillage AI."

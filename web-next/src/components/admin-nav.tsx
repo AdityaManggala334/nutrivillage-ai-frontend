@@ -43,6 +43,7 @@ const GROUPS = [
     title: "Keamanan Pangan",
     links: [
       { href: "/admin/keamanan-pangan", label: "Informasi Keamanan", icon: ShieldAlert },
+      { href: "/admin/artikel", label: "Artikel Gizi", icon: ScrollText },
     ],
   },
   {
