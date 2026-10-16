@@ -26,8 +26,11 @@ export function useRecommendations(payload: ExploreFormData | null) {
       return apiSend("/api/recommendations", "POST", payload, RecommendationListSchema);
     },
     enabled: payload !== null,
-    staleTime: 1000 * 60 * 5,
-    gcTime: 1000 * 60 * 15,
+    // Payload yang sama selalu menghasilkan rekomendasi yang sama, sehingga
+    // hasil dipertahankan lebih lama: hemat kuota Generate (FR-35) ketika
+    // pengguna kembali dari halaman detail resep (E1: payload dipersist).
+    staleTime: 1000 * 60 * 30,
+    gcTime: 1000 * 60 * 60,
     retry: 1,
   });
 }
