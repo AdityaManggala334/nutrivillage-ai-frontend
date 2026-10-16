@@ -45,41 +45,37 @@ const toUser = (stored: StoredUser): User =>
   });
 
 interface AuthStores {
-  usersByEmail: Map<string, StoredUser>;
   usersById: Map<string, StoredUser>;
   sessions: Map<string, string>;
-  phones: Map<string, string>;
 }
 
 /**
- * Store in-memory pada `globalThis` agar dibagi seluruh Route Handler dalam satu
- * proses (data diri & sesi tamu). Data akun persisten ada di MySQL via FastAPI.
+ * Store in-memory pada `globalThis` hanya untuk hal-hal yang memang tidak
+ * punya rumah di database: cache klaim JWT & sesi tamu (yang sengaja tanpa
+ * akun). Data diri pengguna (nama, HP, notifikasi) tersimpan di MySQL via
+ * FastAPI — lihat route `/api/account`.
  */
 const globalForAuth = globalThis as unknown as { __nutrivillageAuth?: AuthStores };
 
 const stores: AuthStores =
   globalForAuth.__nutrivillageAuth ??
   (globalForAuth.__nutrivillageAuth = {
-    usersByEmail: new Map<string, StoredUser>(),
     usersById: new Map<string, StoredUser>(),
     sessions: new Map<string, string>(),
-    phones: new Map<string, string>(),
   });
 
-const { usersByEmail, usersById, sessions, phones } = stores;
+const { usersById, sessions } = stores;
 
-/** Menyimpan salinan user (dari JWT/login) agar `getUserContact` dapat membacanya. */
+/** Menyimpan salinan user (dari JWT/login) agar sesi backend terbaca cepat. */
 const cacheUser = (user: User): void => {
-  const stored: StoredUser = {
+  usersById.set(user.id, {
     id: user.id,
     name: user.name,
     email: user.email,
     passwordHash: "",
     role: user.role,
     createdAt: user.createdAt,
-  };
-  usersById.set(user.id, stored);
-  usersByEmail.set(user.email, stored);
+  });
 };
 
 const createSession = (userId: string): string => {
@@ -222,38 +218,10 @@ export function getUserIdFromRequest(request: Request): string {
 }
 
 /* ------------------------------------------------------------------ */
-/* Data diri pengguna (FR-18)                                          */
+/* Data diri pengguna (FR-18) — lihat route `/api/account`             */
 /* ------------------------------------------------------------------ */
-
-export interface UserContact {
-  readonly name: string;
-  readonly email: string;
-  readonly phone: string;
-}
-
-export function getUserContact(userId: string): UserContact | null {
-  const stored = usersById.get(userId);
-  if (!stored) return null;
-  return { name: stored.name, email: stored.email, phone: phones.get(userId) ?? "" };
-}
-
-export async function updateUserContact(
-  userId: string,
-  input: UserContact,
-): Promise<UserContact> {
-  const stored = usersById.get(userId);
-  if (!stored) throw new Error("Pengguna tidak ditemukan");
-
-  const nextEmail = input.email.trim().toLowerCase();
-  if (stored.email !== nextEmail) {
-    usersByEmail.delete(stored.email);
-    stored.email = nextEmail;
-    usersByEmail.set(nextEmail, stored);
-  }
-  stored.name = input.name;
-  phones.set(userId, input.phone);
-  return { name: stored.name, email: stored.email, phone: input.phone };
-}
+/* Data diri (nama, nomor HP, notifikasi) tidak lagi disimpan di memori:
+   route `/api/account` membaca & menulis ke database via backend FastAPI. */
 
 /** Total pengguna terdaftar (dibaca dari MySQL melalui backend, khusus admin). */
 export async function countUsers(): Promise<number> {

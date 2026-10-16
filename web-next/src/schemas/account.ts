@@ -1,24 +1,47 @@
 import { z } from "zod";
 
-/** FR-18: data diri pengguna (nama, email, nomor HP). */
+/**
+ * Halaman Profil — data diri (FR-18) & sakelar notifikasi (FR-21).
+ *
+ * Data disimpan di database (FastAPI): nama & nomor HP pada tabel `users`,
+ * sakelar notifikasi pada tabel `profiles`. Email sengaja tidak dapat diubah
+ * karena dipakai sebagai identitas login.
+ */
+
+/** 10-15 digit; boleh diawali `+` dan dipisah spasi/strip. */
+export const isValidPhone = (value: string): boolean => {
+  const trimmed = value.trim();
+  if (!trimmed) return true; // nomor HP bersifat opsional
+  if (!/^\+?[0-9\s-]{10,20}$/.test(trimmed)) return false;
+  const digits = trimmed.replace(/\D/g, "").length;
+  return digits >= 10 && digits <= 15;
+};
+
+const phoneField = z
+  .string()
+  .max(30, "Nomor HP terlalu panjang")
+  .refine((value) => isValidPhone(value), "Nomor HP harus terdiri dari 10-15 digit angka");
+
 export const AccountSchema = z.object({
-  name: z.string().trim().min(3, "Nama minimal 3 karakter").max(100, "Nama maksimal 100 karakter"),
-  email: z.email("Format email tidak valid"),
-  phone: z
-    .string()
-    .trim()
-    .min(9, "Nomor HP minimal 9 digit")
-    .max(20, "Nomor HP maksimal 20 digit")
-    .regex(/^[0-9+\-\s]+$/, "Nomor HP hanya boleh berisi angka, +, atau -"),
+  name: z.string().min(3, "Nama minimal 3 karakter").max(100),
+  email: z.string().min(3).max(150),
+  phone: phoneField,
+  notificationsEnabled: z.boolean(),
 });
 
-export type AccountInput = z.infer<typeof AccountSchema>;
-
-/** FR-19: preferensi & tujuan gizi (dipakai pada form profil). */
-export const PreferenceSchema = z.object({
-  preferences: z.array(z.string()),
-  avoidedIngredients: z.array(z.string()),
-  goal: z.enum(["hemat", "seimbang", "tinggi-protein", "rendah-lemak"]),
+/** Input form Data Diri — hanya field yang memang boleh diubah. */
+export const AccountUpdateSchema = z.object({
+  name: z.string().min(3, "Nama minimal 3 karakter").max(100).optional(),
+  phone: phoneField.optional(),
+  notificationsEnabled: z.boolean().optional(),
 });
 
-export type PreferenceInput = z.infer<typeof PreferenceSchema>;
+export const PasswordChangeSchema = z.object({
+  currentPassword: z.string().min(8, "Password lama minimal 8 karakter"),
+  newPassword: z.string().min(8, "Password baru minimal 8 karakter"),
+  confirmPassword: z.string().min(8, "Konfirmasi password minimal 8 karakter"),
+});
+
+export type Account = z.infer<typeof AccountSchema>;
+export type AccountInput = z.infer<typeof AccountUpdateSchema>;
+export type PasswordChangeInput = z.infer<typeof PasswordChangeSchema>;

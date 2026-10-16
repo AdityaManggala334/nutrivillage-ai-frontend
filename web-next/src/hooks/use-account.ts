@@ -4,11 +4,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { apiGet, apiSend } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
-import { AccountSchema, type AccountInput } from "@/schemas/account";
+import { AccountSchema, type AccountInput, type PasswordChangeInput } from "@/schemas/account";
 
 const AccountResponseSchema = AccountSchema.nullable();
+const OkSchema = z.object({ ok: z.literal(true) });
 
-/** FR-18: data diri pengguna (Server State). */
+/** FR-18: data diri pengguna (Server State). Null untuk tamu/tanpa sesi. */
 export function useAccount() {
   return useQuery({
     queryKey: queryKeys.account.detail(),
@@ -18,12 +19,11 @@ export function useAccount() {
   });
 }
 
-/** FR-18: simpan perubahan data diri. */
+/** FR-18/FR-21: simpan data diri & sakelar notifikasi ke database. */
 export function useUpdateAccountMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: AccountInput) =>
-      apiSend("/api/account", "PUT", AccountSchema.parse(input), AccountSchema),
+    mutationFn: (input: AccountInput) => apiSend("/api/account", "PATCH", input, AccountSchema),
     onSuccess: (data) => {
       queryClient.setQueryData(queryKeys.account.detail(), data);
       void queryClient.invalidateQueries({ queryKey: queryKeys.session.all });
@@ -31,5 +31,10 @@ export function useUpdateAccountMutation() {
   });
 }
 
-/** Skema respons untuk validasi runtime (dipakai z.infer agar konsisten). */
-export const AccountResponse = z.object({ name: z.string(), email: z.string(), phone: z.string() });
+/** FR-18: ganti password (password lama diverifikasi oleh backend). */
+export function useChangePasswordMutation() {
+  return useMutation({
+    mutationFn: (input: PasswordChangeInput) =>
+      apiSend("/api/account/password", "PUT", input, OkSchema),
+  });
+}

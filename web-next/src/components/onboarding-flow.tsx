@@ -4,9 +4,9 @@ import { Loader2, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button, FieldError, Input, Label, Select } from "@/components/ui";
+import { Chip, optionsWith, toggleListItem } from "@/components/chip";
 import { useProfile, useSaveProfileMutation } from "@/hooks/use-profile";
-import { cn } from "@/lib/utils";
-import { ALLERGY_OPTIONS } from "@/schemas/explore";
+import { ALLERGY_OPTIONS, PREFERENCE_OPTIONS } from "@/schemas/explore";
 import {
   familyProfileFormSchema,
   type ActivityLevel,
@@ -31,8 +31,7 @@ const emptyMember = (): MemberInput => ({
   allergies: [],
 });
 
-const toggleItem = (list: readonly string[], value: string): string[] =>
-  list.includes(value) ? list.filter((item) => item !== value) : [...list, value];
+const toggleItem = toggleListItem;
 
 const SLIDES = [
   {
@@ -65,28 +64,57 @@ const mapIssues = (issues: ReadonlyArray<{ path: PropertyKey[]; message: string 
   return errors;
 };
 
-/** FR-04 (onboarding) & FR-05 (input data keluarga). */
-export function OnboardingFlow() {
+/** FR-04 (onboarding) & FR-05 (input data keluarga).
+ *
+ * `mode="edit"` dipakai dari halaman Profil (`/onboarding?edit=1`): langsung ke
+ * formulir, data terisi dari profil tersimpan, dan setelah sukses kembali ke
+ * `/profile`.
+ */
+export function OnboardingFlow({ mode = "create" }: { readonly mode?: "create" | "edit" }) {
+  const isEdit = mode === "edit";
   const router = useRouter();
   const profileQuery = useProfile();
   const saveMutation = useSaveProfileMutation();
 
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(isEdit ? MAX_STEP : 0);
   const [dailyBudget, setDailyBudget] = useState("75000");
   const [region, setRegion] = useState("Kabupaten Madiun");
-  const [preferences, setPreferences] = useState("sayur, ikan");
-  const [avoidedIngredients, setAvoidedIngredients] = useState("");
+  const [preferences, setPreferences] = useState<string[]>(["Sayur", "Ikan"]);
+  const [avoidedIngredients, setAvoidedIngredients] = useState<string[]>([]);
   const [members, setMembers] = useState<MemberInput[]>([emptyMember()]);
   const [errors, setErrors] = useState<FormErrors>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isPrefilled, setIsPrefilled] = useState(false);
 
   const isOnboarded = profileQuery.data?.onboarded === true;
   useEffect(() => {
-    if (isOnboarded) {
+    if (isOnboarded && !isEdit) {
       router.replace("/dashboard");
     }
-  }, [isOnboarded, router]);
+  }, [isOnboarded, isEdit, router]);
+
+  // Mode edit: isi formulir dari data keluarga yang tersimpan (sekali saja).
+  useEffect(() => {
+    if (!isEdit || isPrefilled) return;
+    const profile = profileQuery.data;
+    if (!profile) return;
+    setDailyBudget(String(profile.dailyBudget));
+    setRegion(profile.region);
+    setPreferences([...profile.preferences]);
+    setAvoidedIngredients([...profile.avoidedIngredients]);
+    setMembers(
+      profile.members.map((member) => ({
+        name: member.name,
+        age: String(member.age),
+        gender: member.gender,
+        weightKg: String(member.weightKg),
+        activityLevel: member.activityLevel,
+        allergies: [...member.allergies],
+      })),
+    );
+    setIsPrefilled(true);
+  }, [isEdit, isPrefilled, profileQuery.data]);
 
   const updateMember = (index: number, patch: Partial<MemberInput>) => {
     setMembers((current) =>
@@ -123,6 +151,12 @@ export function OnboardingFlow() {
     setServerError(null);
     saveMutation.mutate(payload, {
       onSuccess: () => {
+        if (isEdit) {
+          // Perubahan tersimpan — kembali ke halaman Profil.
+          router.replace("/profile");
+          router.refresh();
+          return;
+        }
         setIsProcessing(true);
         window.setTimeout(() => {
           router.replace("/dashboard");
@@ -175,14 +209,20 @@ export function OnboardingFlow() {
           Onboarding NutriVillage AI
         </h1>
 
-        <ol className="flex items-center justify-center gap-2" aria-label="Progres onboarding">
-          {[0, 1, 2, 3].map((index) => (
-            <li
-              key={index}
-              className={`h-2 w-10 rounded-full transition-colors duration-500 ${index <= step ? "bg-brand-600" : "bg-stone-200"}`}
-            />
-          ))}
-        </ol>
+        {!isEdit ? (
+          <ol className="flex items-center justify-center gap-2" aria-label="Progres onboarding">
+            {[0, 1, 2, 3].map((index) => (
+              <li
+                key={index}
+                className={`h-2 w-10 rounded-full transition-colors duration-500 ${index <= step ? "bg-brand-600" : "bg-stone-200"}`}
+              />
+            ))}
+          </ol>
+        ) : (
+          <p className="text-center text-xs font-semibold tracking-wide text-brand-700 uppercase dark:text-brand-300">
+            Ubah Data Keluarga
+          </p>
+        )}
 
         <div className="glass-strong animate-scale-in mt-6 rounded-3xl p-6 sm:p-8">
           {isForm ? (
@@ -197,9 +237,13 @@ export function OnboardingFlow() {
                 </div>
               ) : null}
 
-              <h2 className="text-xl">Ringkasan Keluarga</h2>
+              <h2 className="text-xl">
+                {isEdit ? "Ubah Data Keluarga" : "Ringkasan Keluarga"}
+              </h2>
               <p className="mt-1 text-sm text-stone-600">
-                Isi anggaran, wilayah, dan anggota keluarga agar rekomendasi lebih tepat.
+                {isEdit
+                  ? "Perbarui anggaran, wilayah, preferensi, dan anggota keluarga. Perubahan tersimpan setelah Anda menekan tombol simpan."
+                  : "Isi anggaran, wilayah, dan anggota keluarga agar rekomendasi lebih tepat."}
               </p>
 
               <div className="mt-5 grid gap-x-4 sm:grid-cols-2">
@@ -228,25 +272,44 @@ export function OnboardingFlow() {
                   />
                   <FieldError>{errors.region}</FieldError>
                 </div>
-                <div className="mb-3 space-y-1.5">
-                  <Label htmlFor="family-preferences">Preferensi Makanan</Label>
-                  <Input
-                    id="family-preferences"
-                    placeholder="Contoh: sayur, ikan"
-                    value={preferences}
-                    onChange={(event) => setPreferences(event.target.value)}
-                  />
-                  <p className="text-xs text-stone-500">Pisahkan dengan koma.</p>
+                <div className="mb-3 space-y-1.5 sm:col-span-2">
+                  <span className="text-sm font-medium text-stone-700 dark:text-stone-200">
+                    Preferensi Makanan
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {optionsWith(PREFERENCE_OPTIONS, preferences).map((option) => (
+                      <Chip
+                        key={option}
+                        active={preferences.includes(option)}
+                        onClick={() => setPreferences(toggleItem(preferences, option))}
+                      >
+                        {option}
+                      </Chip>
+                    ))}
+                  </div>
+                  <p className="text-xs text-stone-500">
+                    Pilih makanan yang disukai keluarga. Kosongkan bila tidak ada pilihan khusus.
+                  </p>
                 </div>
-                <div className="mb-3 space-y-1.5">
-                  <Label htmlFor="family-avoided">Bahan yang Dihindari</Label>
-                  <Input
-                    id="family-avoided"
-                    placeholder="Contoh: kacang, seafood"
-                    value={avoidedIngredients}
-                    onChange={(event) => setAvoidedIngredients(event.target.value)}
-                  />
-                  <p className="text-xs text-stone-500">Pisahkan dengan koma.</p>
+                <div className="mb-3 space-y-1.5 sm:col-span-2">
+                  <span className="text-sm font-medium text-stone-700 dark:text-stone-200">
+                    Bahan yang Dihindari
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {optionsWith(ALLERGY_OPTIONS, avoidedIngredients).map((option) => (
+                      <Chip
+                        key={option}
+                        danger
+                        active={avoidedIngredients.includes(option)}
+                        onClick={() => setAvoidedIngredients(toggleItem(avoidedIngredients, option))}
+                      >
+                        {option}
+                      </Chip>
+                    ))}
+                  </div>
+                  <p className="text-xs text-stone-500">
+                    Pilih bahan yang dihindari/alergi. Kosongkan bila tidak ada.
+                  </p>
                 </div>
               </div>
 
@@ -337,29 +400,20 @@ export function OnboardingFlow() {
                           Alergi / Pantangan
                         </span>
                         <div className="flex flex-wrap gap-2">
-                          {ALLERGY_OPTIONS.map((option) => {
-                            const active = member.allergies.includes(option);
-                            return (
-                              <button
-                                key={option}
-                                type="button"
-                                aria-pressed={active}
-                                onClick={() =>
-                                  updateMember(index, {
-                                    allergies: toggleItem(member.allergies, option),
-                                  })
-                                }
-                                className={cn(
-                                  "press rounded-full border px-3 py-1.5 text-xs font-medium transition",
-                                  active
-                                    ? "border-red-400 bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-300"
-                                    : "border-stone-300 text-stone-600 hover:bg-stone-100 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800",
-                                )}
-                              >
-                                {option}
-                              </button>
-                            );
-                          })}
+                          {optionsWith(ALLERGY_OPTIONS, member.allergies).map((option) => (
+                            <Chip
+                              key={option}
+                              danger
+                              active={member.allergies.includes(option)}
+                              onClick={() =>
+                                updateMember(index, {
+                                  allergies: toggleItem(member.allergies, option),
+                                })
+                              }
+                            >
+                              {option}
+                            </Chip>
+                          ))}
                         </div>
                         <p className="text-xs text-stone-500">
                           Pilih bahan yang menjadi alergi/pantangan. Kosongkan bila tidak ada.
@@ -391,8 +445,19 @@ export function OnboardingFlow() {
 
               <div className="mt-8 flex flex-col gap-3 sm:flex-row-reverse">
                 <Button type="submit" size="lg" fullWidth loading={saveMutation.isPending}>
-                  Simpan &amp; Lanjut
+                  {isEdit ? "Simpan Perubahan" : "Simpan & Lanjut"}
                 </Button>
+                {isEdit ? (
+                  <Button
+                    type="button"
+                    intent="ghost"
+                    size="lg"
+                    fullWidth
+                    onClick={() => router.replace("/profile")}
+                  >
+                    Batal
+                  </Button>
+                ) : null}
               </div>
             </form>
           ) : (
