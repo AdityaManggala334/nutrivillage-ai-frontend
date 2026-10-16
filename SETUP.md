@@ -23,8 +23,11 @@ Dengan cara ini kamu **tidak perlu** install Node.js/Python/MySQL.
 
 ## Cara manual (tanpa Docker)
 
-Butuh **Node.js 20 LTS**. Backend harus sudah berjalan di `http://127.0.0.1:8000`
+Butuh **Node.js 22** (sama dengan versi CI GitHub Actions — lihat `.nvmrc` dan
+`web-next/.nvmrc`). Backend harus sudah berjalan di `http://127.0.0.1:8000`
 (lihat SETUP.md repo backend).
+
+**Linux / macOS**
 
 ```bash
 cd web-next
@@ -32,6 +35,24 @@ cp .env.example .env.local     # lalu sesuaikan bila perlu
 npm install
 npm run dev                    # buka http://localhost:3000
 ```
+
+**Windows (PowerShell / CMD)**
+
+```powershell
+cd web-next
+copy .env.example .env.local
+npm install
+npm run dev
+```
+
+Catatan Windows:
+
+- Node.js 22: pasang lewat installer MSI, atau `nvm-windows` (perintahnya berbeda
+  dari `nvm` di Linux).
+- Bila clone berada di path panjang, aktifkan `git config --system core.longpaths true`
+  agar `npm install` tidak gagal karena batas 260 karakter Windows.
+- Sebaiknya set `git config --global core.autocrlf input`; repo sudah menyertakan
+  `.gitattributes` sehingga berkas tetap tersimpan dengan LF.
 
 **Penting:** nilai `JWT_SECRET` di `.env.local` **harus sama persis** dengan
 `JWT_SECRET` di backend (`nutrivillage-ai-backend/.env`). Kalau berbeda, login
@@ -46,6 +67,10 @@ API_PREFIX=/api/v1
 ```
 
 ### Akun demo
+
+Akun ini dibuat otomatis oleh `python scripts/init_db.py` **hanya bila**
+`SEED_DEMO_ACCOUNTS=true` (default di lokal; di produksi `render.yaml` menyetel `0`,
+sehingga yang dibuat hanya admin dari `BOOTSTRAP_ADMIN_*`).
 
 | Peran | Email | Password |
 | --- | --- | --- |
