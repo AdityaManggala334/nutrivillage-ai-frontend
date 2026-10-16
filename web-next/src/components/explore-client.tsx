@@ -1,18 +1,22 @@
 "use client";
 
 import { useIsFetching } from "@tanstack/react-query";
-import { useState } from "react";
 import { ExploreForm } from "@/components/explore-form";
 import { RecommendationResults } from "@/components/recommendation-results";
 import { queryKeys } from "@/lib/query-keys";
-import type { ExploreFormData } from "@/schemas/explore";
+import { useExploreHydration, useExploreStore } from "@/stores/explore-store";
 
 /**
  * Komponen klien tipis untuk halaman Explore. Memisahkan form (Client UI State
  * lokal) dari hasil (Server State TanStack Query).
+ *
+ * E1: payload terakhir dipersist lewat Zustand sehingga hasil tetap muncul
+ * saat kembali dari halaman detail resep / reload.
  */
 export function ExploreClient() {
-  const [payload, setPayload] = useState<ExploreFormData | null>(null);
+  useExploreHydration();
+  const payload = useExploreStore((state) => state.payload);
+  const setPayload = useExploreStore((state) => state.setPayload);
   const fetchingCount = useIsFetching({ queryKey: queryKeys.recommendations.all });
 
   return (

@@ -1,15 +1,15 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getUserIdFromRequest } from "@/server/auth";
+import { BackendError } from "@/server/backend-api";
 import {
-  deleteShoppingItem,
-  generateShoppingList,
-  generateShoppingListFromRecipe,
-  getShoppingList,
-  toggleShoppingItem,
-  updateShoppingNote,
-} from "@/server/data";
-import { jsonError, parseJsonBody } from "@/server/http";
+  WEEK_LABEL,
+  deleteShoppingItemDb,
+  emptyShoppingList,
+  generateShoppingListDb,
+  getShoppingListFromDb,
+  patchShoppingListDb,
+} from "@/server/planning";
+import { backendErrorResponse, jsonError, parseJsonBody } from "@/server/http";
 
 export const dynamic = "force-dynamic";
 
@@ -23,10 +23,17 @@ const PatchBodySchema = z.union([
   z.object({ note: z.string() }),
 ]);
 
-/** GET /api/shopping-list — daftar belanja tersimpan (FR-16, per pengguna). */
-export async function GET(request: Request): Promise<NextResponse> {
-  const list = await getShoppingList(getUserIdFromRequest(request));
-  return NextResponse.json(list);
+/** GET /api/shopping-list — FR-16, dari tabel `shopping_lists` + items. */
+export async function GET(): Promise<NextResponse> {
+  try {
+    return NextResponse.json(await getShoppingListFromDb());
+  } catch (error) {
+    // Tamu / sesi tanpa akun → daftar kosong (tanpa error 500).
+    if (error instanceof BackendError && error.status === 401) {
+      return NextResponse.json(emptyShoppingList(`Daftar Belanja ${WEEK_LABEL}`));
+    }
+    return backendErrorResponse(error);
+  }
 }
 
 /** POST /api/shopping-list — FR-29 (dari jadwal) & FR-15 (dari satu resep). */
@@ -34,15 +41,11 @@ export async function POST(request: Request): Promise<NextResponse> {
   const parsed = await parseJsonBody(request, GenerateBodySchema);
   if (!parsed.ok) return parsed.response;
 
-  const userId = getUserIdFromRequest(request);
   try {
-    const list =
-      "weekId" in parsed.data
-        ? await generateShoppingList(userId, parsed.data.weekId)
-        : await generateShoppingListFromRecipe(userId, parsed.data.recipeId);
+    const list = await generateShoppingListDb(parsed.data);
     return NextResponse.json(list, { status: 201 });
   } catch (error) {
-    return jsonError(error instanceof Error ? error.message : "Gagal membuat daftar belanja", 400);
+    return backendErrorResponse(error);
   }
 }
 
@@ -51,12 +54,12 @@ export async function PATCH(request: Request): Promise<NextResponse> {
   const parsed = await parseJsonBody(request, PatchBodySchema);
   if (!parsed.ok) return parsed.response;
 
-  const userId = getUserIdFromRequest(request);
-  const list =
-    "note" in parsed.data
-      ? await updateShoppingNote(userId, parsed.data.note)
-      : await toggleShoppingItem(userId, parsed.data.itemId);
-  return NextResponse.json(list);
+  try {
+    const list = await patchShoppingListDb(parsed.data);
+    return NextResponse.json(list);
+  } catch (error) {
+    return backendErrorResponse(error);
+  }
 }
 
 /** DELETE /api/shopping-list?itemId=... — FR-16 (hapus bahan). */
@@ -64,6 +67,10 @@ export async function DELETE(request: Request): Promise<NextResponse> {
   const { searchParams } = new URL(request.url);
   const itemId = searchParams.get("itemId");
   if (!itemId) return jsonError("Parameter itemId wajib diisi", 400);
-  const list = await deleteShoppingItem(getUserIdFromRequest(request), itemId);
-  return NextResponse.json(list);
+
+  try {
+    return NextResponse.json(await deleteShoppingItemDb(itemId));
+  } catch (error) {
+    return backendErrorResponse(error);
+  }
 }

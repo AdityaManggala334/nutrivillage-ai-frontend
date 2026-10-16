@@ -24,11 +24,18 @@ export function RecipeActions({ recipeId, recipeName }: RecipeActionsProps) {
   const [day, setDay] = useState<DayOfWeek>("senin");
   const [slot, setSlot] = useState<MealSlot>("makan-siang");
   const [feedback, setFeedback] = useState<string>("");
+  const [feedbackError, setFeedbackError] = useState<string>("");
 
   const assignMutation = useAssignMealMutation(DEFAULT_WEEK_ID);
   const shoppingMutation = useAddRecipeToShoppingListMutation();
 
+  const startAction = () => {
+    setFeedback("");
+    setFeedbackError("");
+  };
+
   const handleAssign = () => {
+    startAction();
     assignMutation.mutate(
       { weekId: DEFAULT_WEEK_ID, day, slot, recipeId, note: "" },
       {
@@ -36,16 +43,19 @@ export function RecipeActions({ recipeId, recipeName }: RecipeActionsProps) {
           setFeedback(
             `${recipeName} dijadwalkan pada ${DAY_LABELS[day]} - ${MEAL_SLOT_LABELS[slot]}.`,
           ),
+        onError: (error) => setFeedbackError(error.message),
       },
     );
   };
 
   const handleShopping = () => {
+    startAction();
     shoppingMutation.mutate(recipeId, {
       onSuccess: (list) =>
         setFeedback(
           `${list.items.length} bahan ditambahkan ke daftar belanja (estimasi ${list.totalEstimatedCost.toLocaleString("id-ID")}).`,
         ),
+      onError: (error) => setFeedbackError(error.message),
     });
   };
 
@@ -105,8 +115,13 @@ export function RecipeActions({ recipeId, recipeName }: RecipeActionsProps) {
         </div>
       </div>
 
-      <p aria-live="polite" className="min-h-5 text-sm text-brand-700 dark:text-brand-300">
-        {feedback}
+      {/* E2: umpan balik sukses & error (termasuk pesan sesi tamu). */}
+      <p aria-live="polite" className="min-h-5 text-sm">
+        {feedbackError ? (
+          <span className="text-red-600 dark:text-red-400">{feedbackError}</span>
+        ) : (
+          <span className="text-brand-700 dark:text-brand-300">{feedback}</span>
+        )}
       </p>
     </div>
   );

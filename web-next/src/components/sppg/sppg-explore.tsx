@@ -34,13 +34,14 @@ import {
 } from "@/lib/constants";
 import { cn, formatRupiah } from "@/lib/utils";
 import type { DayOfWeek, MealSlot } from "@/schemas/domain";
-import { ALLERGY_OPTIONS, type ExploreFormData } from "@/schemas/explore";
+import { ALLERGY_OPTIONS } from "@/schemas/explore";
 import {
   BENEFICIARY_LEVEL_LABELS,
   BENEFICIARY_LEVEL_ORDER,
   type BeneficiaryLevel,
 } from "@/schemas/school";
 import { useSppgStore, type PorsiRow } from "@/stores/sppg-store";
+import { useExploreHydration, useExploreStore } from "@/stores/explore-store";
 
 interface RowInput {
   readonly id: number;
@@ -73,12 +74,17 @@ export function SppgExplore() {
   const [goal, setGoal] = useState<keyof typeof GOAL_LABELS>("seimbang");
   const [allergies, setAllergies] = useState<string[]>([]);
   const [location, setLocation] = useState("Kabupaten Madiun");
-  const [payload, setPayload] = useState<ExploreFormData | null>(null);
+  const payload = useExploreStore((state) => state.sppgPayload);
+  const setPayload = useExploreStore((state) => state.setSppgPayload);
   const [formError, setFormError] = useState<string | null>(null);
   const [addTarget, setAddTarget] = useState<AddTarget | null>(null);
   const [addDay, setAddDay] = useState<DayOfWeek>("senin");
   const [addSlot, setAddSlot] = useState<MealSlot>("makan-siang");
   const [assignedMsg, setAssignedMsg] = useState<string | null>(null);
+
+  // E1: payload hasil Explore SPPG dipersist di localStorage agar hasil tetap
+  // muncul ketika kembali dari halaman detail resep.
+  useExploreHydration();
 
   const recommendations = useRecommendations(payload);
 

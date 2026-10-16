@@ -24,6 +24,8 @@ export function ShoppingListClient() {
   const regenerateMutation = useRegenerateShoppingListMutation(DEFAULT_WEEK_ID);
 
   const [note, setNote] = useState("");
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [noteSaved, setNoteSaved] = useState(false);
   useEffect(() => {
     if (listQuery.data) setNote(listQuery.data.note);
   }, [listQuery.data]);
@@ -63,12 +65,27 @@ export function ShoppingListClient() {
         </p>
         <Button
           intent="harvest"
-          onClick={() => regenerateMutation.mutate()}
+          onClick={() => {
+            setActionError(null);
+            regenerateMutation.mutate(undefined, {
+              onError: (error) => setActionError(error.message),
+            });
+          }}
           loading={regenerateMutation.isPending}
         >
           <RefreshCw className="size-4" aria-hidden="true" /> Generate dari Jadwal
         </Button>
       </div>
+
+      {/* E2/E3: umpan balik error aksi (mis. mode tamu atau sesi berakhir). */}
+      {actionError ? (
+        <p
+          role="alert"
+          className="rounded-xl bg-red-50 px-4 py-2.5 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-300"
+        >
+          {actionError}
+        </p>
+      ) : null}
 
       {list.items.length === 0 ? (
         <EmptyState
@@ -85,7 +102,13 @@ export function ShoppingListClient() {
                   role="checkbox"
                   aria-checked={item.checked}
                   aria-label={`Tandai ${item.name}`}
-                  onClick={() => toggleMutation.mutate({ itemId: item.id, checked: !item.checked })}
+                  onClick={() => {
+                    setActionError(null);
+                    toggleMutation.mutate(
+                      { itemId: item.id, checked: !item.checked },
+                      { onError: (error) => setActionError(error.message) },
+                    );
+                  }}
                   className={cn(
                     "flex size-6 shrink-0 items-center justify-center rounded-md border transition",
                     item.checked
@@ -119,7 +142,12 @@ export function ShoppingListClient() {
                   className="size-8 text-red-500"
                   aria-label={`Hapus ${item.name}`}
                   loading={deleteMutation.isPending && deleteMutation.variables === item.id}
-                  onClick={() => deleteMutation.mutate(item.id)}
+                  onClick={() => {
+                    setActionError(null);
+                    deleteMutation.mutate(item.id, {
+                      onError: (error) => setActionError(error.message),
+                    });
+                  }}
                 >
                   <Trash2 className="size-4" aria-hidden="true" />
                 </Button>
@@ -144,14 +172,34 @@ export function ShoppingListClient() {
           id="catatan-belanja"
           value={note}
           placeholder="Contoh: beli di Pasar Sleko, tawar dulu harganya."
-          onChange={(event) => setNote(event.target.value)}
+          onChange={(event) => {
+            setNote(event.target.value);
+            setNoteSaved(false);
+          }}
         />
-        <div className="mt-3 flex justify-end">
+        <div className="mt-3 flex items-center justify-end gap-3">
+          {noteSaved ? (
+            <span
+              role="status"
+              className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700 dark:bg-brand-950/50 dark:text-brand-300"
+            >
+              <Check className="size-3.5" aria-hidden="true" /> Tersimpan
+            </span>
+          ) : null}
           <Button
             intent="secondary"
             size="sm"
             loading={noteMutation.isPending}
-            onClick={() => noteMutation.mutate(note)}
+            onClick={() => {
+              setActionError(null);
+              noteMutation.mutate(note, {
+                onSuccess: () => setNoteSaved(true),
+                onError: (error) => {
+                  setNoteSaved(false);
+                  setActionError(error.message);
+                },
+              });
+            }}
           >
             <Save className="size-4" aria-hidden="true" /> Simpan Catatan
           </Button>

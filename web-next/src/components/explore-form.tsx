@@ -1,7 +1,7 @@
 "use client";
 
 import { Sparkles } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, FieldError, Input, Label, Select } from "@/components/ui";
 import { AGE_GROUP_LABELS, AGE_GROUP_ORDER, GOAL_DESCRIPTIONS, GOAL_LABELS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -14,6 +14,7 @@ import {
   type ExploreFormData,
 } from "@/schemas/explore";
 import type { AgeGroup, RecommendationGoal } from "@/schemas/domain";
+import { useExploreHydration, useExploreStore } from "@/stores/explore-store";
 
 export interface ExploreFormProps {
   readonly onGenerate: (data: ExploreFormData) => void;
@@ -49,6 +50,23 @@ export function ExploreForm({ onGenerate, isLoading }: ExploreFormProps) {
   const [allergies, setAllergies] = useState<string[]>([]);
   const [location, setLocation] = useState("Kabupaten Madiun");
   const [errors, setErrors] = useState<FormErrors>({});
+
+  // E1: pulihkan parameter terakhir dari localStorage (sekali per kunjungan).
+  useExploreHydration();
+  const savedPayload = useExploreStore((state) => state.payload);
+  const isPrefilled = useRef(false);
+
+  useEffect(() => {
+    if (isPrefilled.current || !savedPayload) return;
+    isPrefilled.current = true;
+    setBudgetInput(String(savedPayload.dailyBudget));
+    setDays(savedPayload.days);
+    setGoal(savedPayload.goal);
+    setMembers(savedPayload.members);
+    setPreferences([...savedPayload.preferences]);
+    setAllergies([...savedPayload.allergies]);
+    setLocation(savedPayload.location);
+  }, [savedPayload]);
 
   const memberTotal = totalMembers(members);
 

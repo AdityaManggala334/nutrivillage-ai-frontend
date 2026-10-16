@@ -3,50 +3,22 @@ import "server-only";
 import { cache } from "react";
 import { clamp } from "@/lib/utils";
 import type { ExploreFormData } from "@/schemas/explore";
-import type {
-  MealPlan,
-  MealPlanEntry,
-  Recommendation,
-  RecommendationGoal,
-  Recipe,
-  ShoppingItem,
-  ShoppingList,
-} from "@/schemas/domain";
+import type { Recommendation, RecommendationGoal, Recipe } from "@/schemas/domain";
 import { toRecommendationId } from "@/types/branded";
 import { getRecipeFromDb, listRecipesFromDb } from "@/server/recipes";
 
 /**
- * Lapisan akses data sisi server (mock). Mensimulasikan latensi jaringan,
- * Recommendation Engine, dan penyimpanan in-memory untuk riwayat & meal plan.
- * Hanya boleh dipanggil dari Server Components / Route Handlers.
+ * Recommendation Engine (FR-09, FR-10, FR-25) di sisi server.
+ *
+ * Data riwayat, meal planner, dan daftar belanja berada di database
+ * (`server/history.ts` & `server/planning.ts`) — modul ini tidak lagi
+ * menyimpan data in-memory. Hanya boleh dipanggil dari Server Components /
+ * Route Handlers.
  */
 
 const delay = (ms: number): Promise<void> =>
   new Promise((resolve) => {
     setTimeout(resolve, ms);
-  });
-
-const nowIso = (): string => new Date().toISOString();
-
-interface DataStores {
-  /** Jadwal makan per pengguna+pekan (`userId::weekId`). */
-  mealPlanByUser: Map<string, MealPlanEntry[]>;
-  /** Daftar belanja per pengguna. */
-  shoppingByUser: Map<string, ShoppingList>;
-}
-
-/**
- * Store di `globalThis` agar dibagi oleh SELURUH Route Handler dalam satu
- * proses (mencegah data hilang saat modul di-instantiate terpisah per route).
- * Semua store DIKUNCI per `userId` supaya data antarpengguna tidak tercampur.
- */
-const globalForData = globalThis as unknown as { __nutrivillageData?: DataStores };
-
-const dataStores: DataStores =
-  globalForData.__nutrivillageData ??
-  (globalForData.__nutrivillageData = {
-    mealPlanByUser: new Map<string, MealPlanEntry[]>(),
-    shoppingByUser: new Map<string, ShoppingList>(),
   });
 
 /* ------------------------------------------------------------------ */
@@ -174,247 +146,8 @@ export async function generateRecommendations(
 }
 
 /* ------------------------------------------------------------------ */
-/* Riwayat (FR-12, FR-13, FR-14)                                       */
+/* Riwayat (FR-12 s.d. FR-14), Meal Planner (FR-26 s.d. FR-28),        */
+/* dan Daftar Belanja (FR-15 s.d. FR-17, FR-29) kini tersimpan di      */
+/* database: lihat `server/history.ts` & `server/planning.ts`.         */
+/* Modul ini tidak lagi menyimpan data apa pun secara in-memory.       */
 /* ------------------------------------------------------------------ */
-/* Riwayat & favorit kini tersimpan di database melalui `server/history.ts`
-   (endpoint `/api/history`). Modul ini tidak lagi menyimpan riwayat in-memory. */
-
-/* ------------------------------------------------------------------ */
-/* Meal Planner (FR-26, FR-27, FR-28) — in-memory per pengguna         */
-/* ------------------------------------------------------------------ */
-
-const WEEK_LABEL = "Pekan Ini (Senin - Minggu)";
-
-// Catatan: meal planner kini mulai KOSONG (tanpa seed mock). Resep diambil dari
-// database, dan akan diintegrasikan penuh ke tabel `meal_plans` pada fase berikutnya.
-
-const mealKey = (userId: string, weekId: string): string => `${userId}::${weekId}`;
-
-/** Jadwal milik seorang pengguna pada satu pekan; mulai kosong. */
-const mealFor = (userId: string, weekId: string): MealPlanEntry[] => {
-  const key = mealKey(userId, weekId);
-  let list = dataStores.mealPlanByUser.get(key);
-  if (!list) {
-    list = [];
-    dataStores.mealPlanByUser.set(key, list);
-  }
-  return list;
-};
-
-export async function getMealPlan(userId: string, weekId: string): Promise<MealPlan> {
-  await delay(450);
-  return {
-    weekId,
-    weekLabel: WEEK_LABEL,
-    entries: mealFor(userId, weekId),
-  };
-}
-
-/** Utility Type: sebagian field MealPlanEntry + field tambahan untuk input assign. */
-export type AssignMealPlanInput = Pick<MealPlanEntry, "day" | "slot" | "note"> & {
-  readonly weekId: string;
-  readonly recipeId: string;
-};
-
-export async function assignMealPlanEntry(
-  userId: string,
-  input: AssignMealPlanInput,
-): Promise<MealPlanEntry> {
-  await delay(350);
-  const recipe = await getRecipeById(input.recipeId);
-  if (!recipe) throw new Error("Resep tidak ditemukan");
-
-  const entries = mealFor(userId, input.weekId);
-  const withoutSlot = entries.filter(
-    (entry) => !(entry.day === input.day && entry.slot === input.slot),
-  );
-  const entry: MealPlanEntry = {
-    id: `meal-${crypto.randomUUID()}`,
-    day: input.day,
-    slot: input.slot,
-    recipe,
-    note: input.note,
-  };
-  withoutSlot.push(entry);
-  dataStores.mealPlanByUser.set(mealKey(userId, input.weekId), withoutSlot);
-  return entry;
-}
-
-export async function removeMealPlanEntry(
-  userId: string,
-  input: {
-    weekId: string;
-    entryId: string;
-  },
-): Promise<{ entryId: string }> {
-  await delay(300);
-  const entries = mealFor(userId, input.weekId);
-  dataStores.mealPlanByUser.set(
-    mealKey(userId, input.weekId),
-    entries.filter((entry) => entry.id !== input.entryId),
-  );
-  return { entryId: input.entryId };
-}
-
-/* ------------------------------------------------------------------ */
-/* Shopping List dari Meal Planner (FR-29)                             */
-/* ------------------------------------------------------------------ */
-
-const buildShoppingList = (title: string, recipes: readonly Recipe[]): ShoppingList => {
-  const aggregated = new Map<string, ShoppingItem>();
-
-  for (const recipe of recipes) {
-    for (const ingredient of recipe.ingredients) {
-      const key = `${ingredient.name}__${ingredient.unit}`;
-      const existing = aggregated.get(key);
-      if (existing) {
-        aggregated.set(key, {
-          ...existing,
-          quantity: existing.quantity + ingredient.quantity,
-          estimatedPrice: existing.estimatedPrice + ingredient.estimatedPrice,
-        });
-      } else {
-        aggregated.set(key, {
-          id: key,
-          name: ingredient.name,
-          quantity: ingredient.quantity,
-          unit: ingredient.unit,
-          estimatedPrice: ingredient.estimatedPrice,
-          checked: false,
-        });
-      }
-    }
-  }
-
-  const items = [...aggregated.values()];
-  return {
-    id: `belanja-${crypto.randomUUID()}`,
-    title,
-    items,
-    note: '',
-    totalEstimatedCost: items.reduce((total, item) => total + item.estimatedPrice, 0),
-    generatedAt: nowIso(),
-  };
-};
-
-const recomputeTotal = (list: ShoppingList): ShoppingList => ({
-  ...list,
-  totalEstimatedCost: list.items.reduce((total, item) => total + item.estimatedPrice, 0),
-});
-
-const mergeIntoList = (list: ShoppingList, recipes: readonly Recipe[]): ShoppingList => {
-  const map = new Map(list.items.map((item) => [item.id, item]));
-  for (const recipe of recipes) {
-    for (const ingredient of recipe.ingredients) {
-      const key = `${ingredient.name}__${ingredient.unit}`;
-      const existing = map.get(key);
-      if (existing) {
-        map.set(key, {
-          ...existing,
-          quantity: existing.quantity + ingredient.quantity,
-          estimatedPrice: existing.estimatedPrice + ingredient.estimatedPrice,
-        });
-      } else {
-        map.set(key, {
-          id: key,
-          name: ingredient.name,
-          quantity: ingredient.quantity,
-          unit: ingredient.unit,
-          estimatedPrice: ingredient.estimatedPrice,
-          checked: false,
-        });
-      }
-    }
-  }
-  return recomputeTotal({ ...list, items: [...map.values()], generatedAt: nowIso() });
-};
-
-const shoppingFor = (userId: string): ShoppingList => {
-  let list = dataStores.shoppingByUser.get(userId);
-  if (!list) {
-    list = buildShoppingList(`Daftar Belanja ${WEEK_LABEL}`, []);
-    dataStores.shoppingByUser.set(userId, list);
-  }
-  return list;
-};
-
-export function getShoppingListSync(userId: string): ShoppingList {
-  return shoppingFor(userId);
-}
-
-export async function getShoppingList(userId: string): Promise<ShoppingList> {
-  await delay(300);
-  return shoppingFor(userId);
-}
-
-export async function generateShoppingList(
-  userId: string,
-  weekId: string,
-): Promise<ShoppingList> {
-  await delay(700);
-  const entries = mealFor(userId, weekId);
-  const list = buildShoppingList(
-    `Daftar Belanja ${WEEK_LABEL}`,
-    entries.map((entry) => entry.recipe),
-  );
-  dataStores.shoppingByUser.set(userId, list);
-  return list;
-}
-
-/** FR-15: tambahkan bahan dari satu resep (hasil Explore / detail resep) ke daftar belanja. */
-export async function generateShoppingListFromRecipe(
-  userId: string,
-  recipeId: string,
-): Promise<ShoppingList> {
-  await delay(500);
-  const recipe = await getRecipeById(recipeId);
-  if (!recipe) throw new Error("Resep tidak ditemukan");
-  const base = shoppingFor(userId);
-  const list = mergeIntoList(base, [recipe]);
-  dataStores.shoppingByUser.set(userId, list);
-  return list;
-}
-
-/** FR-16: centang / batal centang bahan. */
-export async function toggleShoppingItem(
-  userId: string,
-  itemId: string,
-): Promise<ShoppingList> {
-  await delay(200);
-  const list = shoppingFor(userId);
-  const next: ShoppingList = {
-    ...list,
-    items: list.items.map((item) =>
-      item.id === itemId ? { ...item, checked: !item.checked } : item,
-    ),
-  };
-  dataStores.shoppingByUser.set(userId, next);
-  return next;
-}
-
-/** FR-16: hapus bahan dari daftar. */
-export async function deleteShoppingItem(
-  userId: string,
-  itemId: string,
-): Promise<ShoppingList> {
-  await delay(250);
-  const list = shoppingFor(userId);
-  const next = recomputeTotal({
-    ...list,
-    items: list.items.filter((item) => item.id !== itemId),
-  });
-  dataStores.shoppingByUser.set(userId, next);
-  return next;
-}
-
-/** FR-17: simpan catatan tambahan pada daftar belanja. */
-export async function updateShoppingNote(
-  userId: string,
-  note: string,
-): Promise<ShoppingList> {
-  await delay(200);
-  const list = shoppingFor(userId);
-  const next = { ...list, note };
-  dataStores.shoppingByUser.set(userId, next);
-  return next;
-}

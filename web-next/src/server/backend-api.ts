@@ -811,3 +811,110 @@ export async function backendChangePassword(
     token,
   );
 }
+
+/* ------------------------------------------------------------------ */
+/* Meal planner & daftar belanja (FR-15 s.d. FR-17, FR-26 s.d. FR-29) */
+/* ------------------------------------------------------------------ */
+
+export interface BackendMealPlanEntry {
+  readonly id: number;
+  readonly week_id: string;
+  readonly day: string;
+  readonly slot: string;
+  readonly note: string;
+  readonly recipe: BackendRecipe | null;
+}
+
+export async function backendListMealPlans(
+  token: string,
+  weekId: string,
+): Promise<BackendMealPlanEntry[]> {
+  return backendFetch<BackendMealPlanEntry[]>(
+    `/meal-plans?week_id=${encodeURIComponent(weekId)}`,
+    { method: "GET" },
+    token,
+  );
+}
+
+export async function backendAssignMealPlan(
+  token: string,
+  input: {
+    readonly week_id: string;
+    readonly day: string;
+    readonly slot: string;
+    readonly recipe_id: number;
+    readonly note: string;
+  },
+): Promise<BackendMealPlanEntry> {
+  return backendFetch<BackendMealPlanEntry>(
+    "/meal-plans",
+    { method: "POST", body: JSON.stringify(input) },
+    token,
+  );
+}
+
+export async function backendRemoveMealPlan(
+  token: string,
+  entryId: number | string,
+): Promise<{ readonly entry_id: number }> {
+  return backendFetch<{ entry_id: number }>(
+    `/meal-plans?entry_id=${encodeURIComponent(String(entryId))}`,
+    { method: "DELETE" },
+    token,
+  );
+}
+
+export interface BackendShoppingItem {
+  readonly id: number;
+  readonly name: string;
+  readonly quantity: number;
+  readonly unit: string;
+  readonly estimated_price: number;
+  readonly checked: boolean;
+}
+
+export interface BackendShoppingList {
+  readonly id: number;
+  readonly title: string;
+  readonly note: string | null;
+  readonly total_estimated_cost: number;
+  readonly generated_at: string;
+  readonly items: readonly BackendShoppingItem[];
+}
+
+export async function backendGetShoppingList(token: string): Promise<BackendShoppingList> {
+  return backendFetch<BackendShoppingList>("/shopping-list", { method: "GET" }, token);
+}
+
+export async function backendGenerateShoppingList(
+  token: string,
+  input: { readonly week_id?: string; readonly recipe_id?: number },
+): Promise<BackendShoppingList> {
+  return backendFetch<BackendShoppingList>(
+    "/shopping-list",
+    { method: "POST", body: JSON.stringify(input) },
+    token,
+  );
+}
+
+export async function backendPatchShoppingList(
+  token: string,
+  input: { readonly item_id?: number; readonly checked?: boolean; readonly note?: string },
+): Promise<BackendShoppingList> {
+  return backendFetch<BackendShoppingList>(
+    "/shopping-list",
+    { method: "PATCH", body: JSON.stringify(input) },
+    token,
+  );
+}
+
+export async function backendDeleteShoppingItem(
+  token: string,
+  itemId: number | string,
+): Promise<BackendShoppingList> {
+  return backendFetch<BackendShoppingList>(
+    `/shopping-list?item_id=${encodeURIComponent(String(itemId))}`,
+    { method: "DELETE" },
+    token,
+  );
+}

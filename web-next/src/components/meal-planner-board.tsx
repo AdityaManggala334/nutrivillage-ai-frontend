@@ -40,6 +40,7 @@ import { useMealPlannerStore, type SlotTarget } from "@/stores/meal-planner-stor
  */
 export function MealPlannerBoard() {
   const [shoppingList, setShoppingList] = useState<ShoppingList | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const mealPlan = useMealPlan(DEFAULT_WEEK_ID);
   const recipesQuery = useRecipes();
@@ -57,15 +58,26 @@ export function MealPlannerBoard() {
     entries.find((entry) => entry.day === day && entry.slot === slot);
 
   const assign = (recipeId: string, target: SlotTarget) => {
+    setActionError(null);
     assignMutation.mutate(
       { weekId: DEFAULT_WEEK_ID, day: target.day, slot: target.slot, recipeId, note: "" },
-      { onSuccess: () => closePicker() },
+      {
+        onSuccess: () => closePicker(),
+        onError: (error) => setActionError(error.message),
+      },
     );
   };
 
+  const remove = (entryId: string) => {
+    setActionError(null);
+    removeMutation.mutate(entryId, { onError: (error) => setActionError(error.message) });
+  };
+
   const handleGenerate = () => {
+    setActionError(null);
     shoppingMutation.mutate(undefined, {
       onSuccess: (data) => setShoppingList(data),
+      onError: (error) => setActionError(error.message),
     });
   };
 
@@ -117,6 +129,16 @@ export function MealPlannerBoard() {
         </Button>
       </div>
 
+      {/* E2: umpan balik error aksi (mis. mode tamu atau sesi berakhir). */}
+      {actionError ? (
+        <p
+          role="alert"
+          className="rounded-xl bg-red-50 px-4 py-2.5 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-300"
+        >
+          {actionError}
+        </p>
+      ) : null}
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {DAYS.map((day) => (
           <div
@@ -155,7 +177,7 @@ export function MealPlannerBoard() {
                             loading={
                               removeMutation.isPending && removeMutation.variables === entry.id
                             }
-                            onClick={() => removeMutation.mutate(entry.id)}
+                            onClick={() => remove(entry.id)}
                           >
                             <Trash2 className="size-3.5" aria-hidden="true" />
                           </Button>
