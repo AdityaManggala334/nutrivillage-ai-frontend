@@ -2,10 +2,11 @@ import { Leaf } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Suspense } from "react";
+import { GlassShell } from "@/components/glass-shell";
 import { RecipeDetail } from "@/components/recipe-detail";
-import { RecipeDetailSkeleton } from "@/components/recipe-detail-skeleton";
-import { findRecipeSync, getRecipeForRequest } from "@/server/data";
+import { getRecipeForRequest } from "@/server/data";
+
+export const dynamic = "force-dynamic";
 
 interface RecipePageProps {
   readonly params: Promise<{ id: string }>;
@@ -33,23 +34,14 @@ export async function generateMetadata({ params }: RecipePageProps): Promise<Met
   };
 }
 
-/** Komponen async RSC yang di-stream di dalam <Suspense>. */
-async function RecipeContent({ id }: { id: string }) {
-  const recipe = await getRecipeForRequest(id);
-  if (!recipe) notFound();
-  return <RecipeDetail recipe={recipe} />;
-}
-
 export default async function RecipeDetailPage({ params }: RecipePageProps) {
   const { id } = await params;
 
-  // Cek keberadaan lebih dulu agar status HTTP 404 benar sebelum streaming.
-  if (!findRecipeSync(id)) {
-    notFound();
-  }
+  const recipe = await getRecipeForRequest(id);
+  if (!recipe) notFound();
 
   return (
-    <div className="min-h-screen">
+    <GlassShell className="min-h-screen">
       <header className="mx-auto flex max-w-6xl items-center justify-between px-4 py-5">
         <Link href="/" className="flex items-center gap-2">
           <span className="flex size-9 items-center justify-center rounded-xl bg-brand-600 text-white">
@@ -68,10 +60,8 @@ export default async function RecipeDetailPage({ params }: RecipePageProps) {
       </header>
 
       <main id="konten-utama" className="mx-auto max-w-6xl px-4 pb-16">
-        <Suspense fallback={<RecipeDetailSkeleton />}>
-          <RecipeContent id={id} />
-        </Suspense>
+        <RecipeDetail recipe={recipe} />
       </main>
-    </div>
+    </GlassShell>
   );
 }

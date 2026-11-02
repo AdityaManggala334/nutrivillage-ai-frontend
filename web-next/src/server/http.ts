@@ -3,9 +3,21 @@ import "server-only";
 import { NextResponse } from "next/server";
 import type { z } from "zod";
 import { ROLE_COOKIE, SESSION_COOKIE } from "@/lib/constants";
+import { BackendError } from "@/server/backend-api";
 
 export function jsonError(message: string, status: number): NextResponse {
   return NextResponse.json({ message }, { status });
+}
+
+/** Memetakan error backend FastAPI ke respons Next.js. */
+export function backendErrorResponse(error: unknown): NextResponse {
+  if (error instanceof BackendError) {
+    return jsonError(error.message, error.status);
+  }
+  if (error instanceof Error) {
+    return jsonError(error.message, 500);
+  }
+  return jsonError("Terjadi kesalahan tak terduga.", 500);
 }
 
 /** Menulis cookie sesi + role (RBAC) pada respons autentikasi. */

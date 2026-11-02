@@ -1,19 +1,21 @@
 "use client";
 
-import { Sparkles } from "lucide-react";
+import { Pencil, Sparkles, Trash2, UserPlus } from "lucide-react";
 import { useState } from "react";
-import { Button, FieldError, Input, Label, Select } from "@/components/ui";
-import { AGE_GROUP_LABELS, AGE_GROUP_ORDER, GOAL_DESCRIPTIONS, GOAL_LABELS } from "@/lib/constants";
+import { Button, Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle, FieldError, Input, Label, Select } from "@/components/ui";
+import { useProfile } from "@/hooks/use-profile";
+import { AGE_GROUP_LABELS, GOAL_DESCRIPTIONS, GOAL_LABELS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import {
   ALLERGY_OPTIONS,
   ExploreFormSchema,
+  ExploreMemberSchema,
   PREFERENCE_OPTIONS,
   totalMembers,
-  type AgeCounts,
   type ExploreFormData,
+  type ExploreMember,
 } from "@/schemas/explore";
-import type { AgeGroup, RecommendationGoal } from "@/schemas/domain";
+import type { ActivityLevel, Gender } from "@/schemas/profile";
 
 export interface ExploreFormProps {
   readonly onGenerate: (data: ExploreFormData) => void;
@@ -21,6 +23,36 @@ export interface ExploreFormProps {
 }
 
 type FormErrors = Record<string, string>;
+
+interface MemberDraft {
+  name: string;
+  age: string;
+  gender: Gender;
+  weightKg: string;
+  heightCm: string;
+  activityLevel: ActivityLevel;
+  allergies: string[];
+}
+
+const emptyMember = (): MemberDraft => ({
+  name: "",
+  age: "",
+  gender: "laki-laki",
+  weightKg: "",
+  heightCm: "",
+  activityLevel: "sedang",
+  allergies: [],
+});
+
+const toDraft = (member: ExploreMember): MemberDraft => ({
+  name: member.name,
+  age: String(member.age),
+  gender: member.gender,
+  weightKg: String(member.weightKg),
+  heightCm: String(member.heightCm),
+  activityLevel: member.activityLevel,
+  allergies: member.allergies,
+});
 
 const mapIssues = (issues: ReadonlyArray<{ path: PropertyKey[]; message: string }>): FormErrors => {
   const errors: FormErrors = {};
@@ -34,247 +66,303 @@ const mapIssues = (issues: ReadonlyArray<{ path: PropertyKey[]; message: string 
 const toggleItem = (list: readonly string[], value: string): string[] =>
   list.includes(value) ? list.filter((item) => item !== value) : [...list, value];
 
-/** FR-08: form input kebutuhan rekomendasi dengan validasi Zod sisi klien. */
+function MemberDialog({
+  draft,
+  onSave,
+  onClose,
+}: {
+  readonly draft: MemberDraft;
+  readonly onSave: (member: ExploreMember) => void;
+  readonly onClose: () => void;
+}) {
+  const [form, setForm] = useState<MemberDraft>(draft);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = () => {
+    const parsed = ExploreMemberSchema.safeParse({
+      name: form.name,
+      age: form.age,
+      gender: form.gender,
+      weightKg: form.weightKg,
+      heightCm: form.heightCm,
+      activityLevel: form.activityLevel,
+      allergies: form.allergies,
+    });
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? "Data anggota belum valid.");
+      return;
+    }
+    onSave(parsed.data);
+  };
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Data Anggota</DialogTitle></DialogHeader>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <Label className="mb-1 block text-xs">Nama</Label>
+            <Input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
+          </div>
+          <div>
+            <Label className="mb-1 block text-xs">Umur (tahun)</Label>
+            <Input type="number" min={1} max={120} value={form.age} onChange={(event) => setForm({ ...form, age: event.target.value })} />
+          </div>
+          <div>
+            <Label className="mb-1 block text-xs">Jenis kelamin</Label>
+            <Select value={form.gender} onChange={(event) => setForm({ ...form, gender: event.target.value as Gender })}>
+              <option value="laki-laki">Laki-laki</option>
+              <option value="perempuan">Perempuan</option>
+            </Select>
+          </div>
+          <div>
+            <Label className="mb-1 block text-xs">Berat badan (kg)</Label>
+            <Input type="number" min={1} max={250} step={0.5} value={form.weightKg} onChange={(event) => setForm({ ...form, weightKg: event.target.value })} />
+          </div>
+          <div>
+            <Label className="mb-1 block text-xs">Tinggi badan (cm)</Label>
+            <Input type="number" min={50} max={250} step={0.5} value={form.heightCm} onChange={(event) => setForm({ ...form, heightCm: event.target.value })} />
+          </div>
+          <div className="sm:col-span-2">
+            <Label className="mb-1 block text-xs">Aktivitas</Label>
+            <Select value={form.activityLevel} onChange={(event) => setForm({ ...form, activityLevel: event.target.value as ActivityLevel })}>
+              <option value="rendah">Rendah</option>
+              <option value="sedang">Sedang</option>
+              <option value="tinggi">Tinggi</option>
+            </Select>
+          </div>
+          <div className="sm:col-span-2">
+            <span className="text-xs font-medium">Alergi / pantangan</span>
+            <div className="mt-1 flex flex-wrap gap-1.5">
+              {ALLERGY_OPTIONS.map((option) => {
+                const active = form.allergies.includes(option);
+                return (
+                  <button
+                    key={option}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => setForm({ ...form, allergies: toggleItem(form.allergies, option) })}
+                    className={cn(
+                      "rounded-full border px-2.5 py-1 text-xs",
+                      active
+                        ? "border-red-400 bg-red-50 text-red-700 dark:bg-red-950/40"
+                        : "border-stone-300 text-stone-600 dark:border-stone-700",
+                    )}
+                  >
+                    {option}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+        {error ? <FieldError>{error}</FieldError> : null}
+        <div className="mt-5 flex justify-end gap-2">
+          <DialogClose asChild><Button type="button" intent="ghost">Batal</Button></DialogClose>
+          <Button type="button" onClick={submit}>Simpan</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** FR-08: parameter rekomendasi dengan data per anggota keluarga. */
 export function ExploreForm({ onGenerate, isLoading }: ExploreFormProps) {
+  const profileQuery = useProfile();
   const [budgetInput, setBudgetInput] = useState("50000");
-  const [days, setDays] = useState(3);
-  const [goal, setGoal] = useState<RecommendationGoal>("seimbang");
-  const [members, setMembers] = useState<AgeCounts>({
-    balita: 0,
-    anak: 1,
-    dewasa: 2,
-    lansia: 0,
-  });
+  const [goal, setGoal] = useState<ExploreFormData["goal"]>("seimbang");
+  const [members, setMembers] = useState<ExploreMember[]>([]);
   const [preferences, setPreferences] = useState<string[]>(["Sayur"]);
   const [allergies, setAllergies] = useState<string[]>([]);
   const [location, setLocation] = useState("Kabupaten Madiun");
+  const [mealsPerDay, setMealsPerDay] = useState("3");
+  const [includeSusu, setIncludeSusu] = useState(true);
   const [errors, setErrors] = useState<FormErrors>({});
+  const [dialog, setDialog] = useState<{ index: number | null; draft: MemberDraft } | null>(null);
 
-  const memberTotal = totalMembers(members);
+  const profile = profileQuery.data;
+  const groups = members.reduce<Record<string, number>>((acc, member) => {
+    const group =
+      member.age <= 3 ? "balita" : member.age <= 12 ? "anak" : member.age <= 59 ? "dewasa" : "lansia";
+    acc[group] = (acc[group] ?? 0) + 1;
+    return acc;
+  }, {});
 
-  const updateMember = (group: AgeGroup, delta: number) => {
+  const pakaiKeluarga = () => {
+    if (!profile) return;
+    setMembers(
+      profile.members.map((member) => ({
+        name: member.name,
+        age: member.age,
+        gender: member.gender,
+        weightKg: member.weightKg,
+        heightCm: member.heightCm ?? 160,
+        activityLevel: member.activityLevel,
+        allergies: member.allergies,
+      })),
+    );
+    setBudgetInput(String(profile.dailyBudget));
+    setPreferences(profile.preferences);
+    setAllergies(profile.avoidedIngredients);
+    setLocation(profile.region);
+    setMealsPerDay(String(profile.mealsPerDay));
+    setIncludeSusu(profile.includeSusu);
+    setErrors({});
+  };
+
+  const simpanAnggota = (member: ExploreMember) => {
     setMembers((current) => {
-      const next = Math.max(0, Math.min(20, current[group] + delta));
-      return { ...current, [group]: next };
+      if (dialog?.index === null || dialog?.index === undefined) return [...current, member];
+      return current.map((row, index) => (index === dialog.index ? member : row));
     });
+    setDialog(null);
   };
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const candidate = {
       dailyBudget: budgetInput,
-      days,
       goal,
       members,
       preferences,
       allergies,
       location,
+      mealsPerDay,
+      includeSusu,
     };
-
     const result = ExploreFormSchema.safeParse(candidate);
     if (!result.success) {
       setErrors(mapIssues(result.error.issues));
       return;
     }
-
     setErrors({});
     onGenerate(result.data);
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      aria-label="Form parameter rekomendasi menu"
-      className="space-y-6"
-      noValidate
-    >
+    <form onSubmit={handleSubmit} aria-label="Form parameter rekomendasi menu" className="space-y-6" noValidate>
+      <div className="rounded-xl border border-brand-200 bg-brand-50/60 p-4 dark:border-brand-900 dark:bg-brand-950/30">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-brand-900 dark:text-brand-100">Data anggota keluarga</p>
+            <p className="mt-1 text-xs text-stone-600 dark:text-stone-300">
+              {members.length > 0
+                ? `${members.length} orang · ${Object.entries(groups).map(([key, value]) => `${AGE_GROUP_LABELS[key as keyof typeof AGE_GROUP_LABELS]} ${value}`).join(" · ")}`
+                : "Pilih template data keluarga dari onboarding atau isi manual."}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" size="sm" onClick={pakaiKeluarga} disabled={!profile || profileQuery.isPending}>
+              <Sparkles className="size-4" /> Gunakan Data Keluarga
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              intent="secondary"
+              onClick={() => setDialog({ index: null, draft: emptyMember() })}
+            >
+              <UserPlus className="size-4" /> Atur Manual
+            </Button>
+          </div>
+        </div>
+        {!profile && !profileQuery.isPending ? (
+          <p className="mt-2 text-xs text-stone-500">Belum ada profil keluarga. Isi onboarding atau atur manual.</p>
+        ) : null}
+        {members.length > 0 ? (
+          <div className="mt-3 space-y-2">
+            {members.map((member, index) => (
+              <div key={`${member.name}-${index}`} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-white/70 px-3 py-2 text-sm dark:bg-stone-900/40">
+                <div className="min-w-0">
+                  <p className="font-medium text-stone-800 dark:text-stone-100">
+                    {member.name} · {member.age} th · {member.gender === "laki-laki" ? "L" : "P"}
+                  </p>
+                  <p className="text-xs text-stone-500">
+                    {member.weightKg} kg / {member.heightCm} cm · aktivitas {member.activityLevel}
+                    {member.allergies.length > 0 ? ` · alergi: ${member.allergies.join(", ")}` : ""}
+                  </p>
+                </div>
+                <div className="flex gap-1">
+                  <Button type="button" intent="ghost" size="sm" aria-label={`Ubah ${member.name}`} onClick={() => setDialog({ index, draft: toDraft(member) })}>
+                    <Pencil className="size-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    intent="ghost"
+                    size="sm"
+                    aria-label={`Hapus ${member.name}`}
+                    onClick={() => setMembers((current) => current.filter((_, pos) => pos !== index))}
+                  >
+                    <Trash2 className="size-4 text-red-600" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
+        <FieldError>{errors.members}</FieldError>
+      </div>
+
       <div className="grid gap-x-5 gap-y-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="budget" className="block min-h-10">
-            Anggaran harian keluarga (Rp)
-          </Label>
-          <Input
-            id="budget"
-            name="budget"
-            type="number"
-            inputMode="numeric"
-            min={1000}
-            step={1000}
-            value={budgetInput}
-            invalid={Boolean(errors.dailyBudget)}
-            aria-describedby={errors.dailyBudget ? "budget-error" : "budget-hint"}
-            onChange={(event) => setBudgetInput(event.target.value)}
-          />
-          <p id="budget-hint" className="text-xs text-stone-500 dark:text-stone-400">
-            Anggaran untuk seluruh anggota keluarga dalam sehari.
-          </p>
-          <FieldError id="budget-error">{errors.dailyBudget}</FieldError>
+          <Label htmlFor="budget">Anggaran harian keluarga (Rp)</Label>
+          <Input id="budget" type="number" min={1000} step={1000} value={budgetInput} invalid={Boolean(errors.dailyBudget)} onChange={(event) => setBudgetInput(event.target.value)} />
+          <FieldError>{errors.dailyBudget}</FieldError>
         </div>
-
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="days" className="block min-h-10">
-            Jumlah hari rencana
-          </Label>
-          <Select
-            id="days"
-            name="days"
-            value={days}
-            invalid={Boolean(errors.days)}
-            onChange={(event) => setDays(Number(event.target.value))}
-          >
-            {[1, 2, 3, 4, 5, 6, 7].map((option) => (
-              <option key={option} value={option}>
-                {option} hari
-              </option>
-            ))}
+          <Label htmlFor="goal">Tujuan / kebutuhan gizi</Label>
+          <Select id="goal" value={goal} onChange={(event) => setGoal(event.target.value as ExploreFormData["goal"])}>
+            {Object.entries(GOAL_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </Select>
-          <FieldError>{errors.days}</FieldError>
+          <p className="text-xs text-stone-500">{GOAL_DESCRIPTIONS[goal]}</p>
         </div>
-
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="goal" className="block min-h-10">
-            Tujuan / kebutuhan gizi
-          </Label>
-          <Select
-            id="goal"
-            name="goal"
-            value={goal}
-            onChange={(event) => setGoal(event.target.value as RecommendationGoal)}
-          >
-            {Object.entries(GOAL_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </Select>
-          <p className="text-xs text-stone-500 dark:text-stone-400">{GOAL_DESCRIPTIONS[goal]}</p>
+          <Label htmlFor="meals">Makan per hari</Label>
+          <Input id="meals" type="number" min={1} max={5} value={mealsPerDay} onChange={(event) => setMealsPerDay(event.target.value)} />
         </div>
-
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="location" className="block min-h-10">
-            Lokasi / wilayah
-          </Label>
-          <Input
-            id="location"
-            name="location"
-            value={location}
-            invalid={Boolean(errors.location)}
-            onChange={(event) => setLocation(event.target.value)}
-          />
-          <FieldError>{errors.location}</FieldError>
+          <Label htmlFor="location">Wilayah</Label>
+          <Input id="location" value={location} onChange={(event) => setLocation(event.target.value)} />
+        </div>
+        <label className="flex items-center gap-2 self-end pb-2 text-sm">
+          <input type="checkbox" className="size-4 accent-brand-600" checked={includeSusu} onChange={(event) => setIncludeSusu(event.target.checked)} />
+          Sertakan susu
+        </label>
+      </div>
+
+      <div className="space-y-2">
+        <span className="text-sm font-medium">Preferensi makanan</span>
+        <div className="flex flex-wrap gap-2">
+          {PREFERENCE_OPTIONS.map((option) => {
+            const active = preferences.includes(option);
+            return (
+              <button key={option} type="button" aria-pressed={active} onClick={() => setPreferences(toggleItem(preferences, option))} className={cn("rounded-full border px-3 py-1.5 text-xs", active ? "border-brand-400 bg-brand-50 text-brand-800 dark:bg-brand-950/40" : "border-stone-300 text-stone-600 dark:border-stone-700")}>
+                {option}
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      <fieldset className="space-y-3">
-        <legend className="text-sm font-medium text-stone-700 dark:text-stone-200">
-          Jumlah anggota keluarga ({memberTotal} orang)
-        </legend>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {AGE_GROUP_ORDER.map((group) => (
-            <div
-              key={group}
-              className="flex items-center justify-between rounded-xl border border-stone-200 bg-white px-3 py-2 dark:border-stone-800 dark:bg-stone-900"
-            >
-              <span className="text-sm text-stone-700 dark:text-stone-200">
-                {AGE_GROUP_LABELS[group]}
-              </span>
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  intent="outline"
-                  size="icon"
-                  className="size-8"
-                  aria-label={`Kurangi anggota ${AGE_GROUP_LABELS[group]}`}
-                  onClick={() => updateMember(group, -1)}
-                >
-                  −
-                </Button>
-                <span
-                  aria-live="polite"
-                  className="w-6 text-center text-sm font-semibold text-stone-900 dark:text-stone-50"
-                >
-                  {members[group]}
-                </span>
-                <Button
-                  type="button"
-                  intent="outline"
-                  size="icon"
-                  className="size-8"
-                  aria-label={`Tambah anggota ${AGE_GROUP_LABELS[group]}`}
-                  onClick={() => updateMember(group, 1)}
-                >
-                  +
-                </Button>
-              </div>
-            </div>
-          ))}
+      <div className="space-y-2">
+        <span className="text-sm font-medium">Alergi / pantangan keluarga</span>
+        <div className="flex flex-wrap gap-2">
+          {ALLERGY_OPTIONS.map((option) => {
+            const active = allergies.includes(option);
+            return (
+              <button key={option} type="button" aria-pressed={active} onClick={() => setAllergies(toggleItem(allergies, option))} className={cn("rounded-full border px-3 py-1.5 text-xs", active ? "border-red-400 bg-red-50 text-red-700 dark:bg-red-950/40" : "border-stone-300 text-stone-600 dark:border-stone-700")}>
+                {option}
+              </button>
+            );
+          })}
         </div>
-        <FieldError>{errors.members}</FieldError>
-      </fieldset>
-
-      <div className="grid gap-5 sm:grid-cols-2">
-        <fieldset className="space-y-2">
-          <legend className="text-sm font-medium text-stone-700 dark:text-stone-200">
-            Preferensi makanan
-          </legend>
-          <div className="flex flex-wrap gap-2">
-            {PREFERENCE_OPTIONS.map((option) => {
-              const active = preferences.includes(option);
-              return (
-                <button
-                  key={option}
-                  type="button"
-                  aria-pressed={active}
-                  onClick={() => setPreferences((current) => toggleItem(current, option))}
-                  className={cn(
-                    "rounded-full border px-3 py-1.5 text-xs font-medium transition",
-                    active
-                      ? "border-brand-500 bg-brand-50 text-brand-700 dark:bg-brand-950 dark:text-brand-300"
-                      : "border-stone-300 text-stone-600 hover:bg-stone-100 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800",
-                  )}
-                >
-                  {option}
-                </button>
-              );
-            })}
-          </div>
-        </fieldset>
-
-        <fieldset className="space-y-2">
-          <legend className="text-sm font-medium text-stone-700 dark:text-stone-200">
-            Alergi / pantangan
-          </legend>
-          <div className="flex flex-wrap gap-2">
-            {ALLERGY_OPTIONS.map((option) => {
-              const active = allergies.includes(option);
-              return (
-                <button
-                  key={option}
-                  type="button"
-                  aria-pressed={active}
-                  onClick={() => setAllergies((current) => toggleItem(current, option))}
-                  className={cn(
-                    "rounded-full border px-3 py-1.5 text-xs font-medium transition",
-                    active
-                      ? "border-red-400 bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-300"
-                      : "border-stone-300 text-stone-600 hover:bg-stone-100 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800",
-                  )}
-                >
-                  {option}
-                </button>
-              );
-            })}
-          </div>
-        </fieldset>
       </div>
 
-      <Button type="submit" size="lg" loading={isLoading} fullWidth>
-        <Sparkles className="size-4" aria-hidden="true" />
-        Generate Rekomendasi
+      <Button type="submit" size="lg" fullWidth loading={isLoading} disabled={members.length === 0}>
+        <Sparkles className="size-4" /> Generate Rekomendasi
       </Button>
-      <p className="text-center text-xs text-stone-500 dark:text-stone-400">
-        Maksimal 5 kali generate per jam per akun.
-      </p>
+      <p className="text-center text-xs text-stone-500">{totalMembers(members)} anggota · {mealsPerDay} kali makan/hari</p>
+
+      {dialog ? <MemberDialog draft={dialog.draft} onSave={simpanAnggota} onClose={() => setDialog(null)} /> : null}
     </form>
   );
 }

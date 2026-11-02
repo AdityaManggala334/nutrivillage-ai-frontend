@@ -18,6 +18,7 @@ const nextConfig: NextConfig = {
   // Modul 6: optimasi format gambar modern.
   images: {
     formats: ["image/avif", "image/webp"],
+    remotePatterns: [{ protocol: "https", hostname: "ik.imagekit.io" }],
   },
 };
 

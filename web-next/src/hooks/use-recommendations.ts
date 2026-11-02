@@ -1,20 +1,16 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { z } from "zod";
 import { apiSend } from "@/lib/api-client";
 import { hashObject } from "@/lib/utils";
 import { queryKeys } from "@/lib/query-keys";
-import { RecommendationSchema } from "@/schemas/domain";
+import { MealPlanSchema } from "@/schemas/meal-plan";
 import type { ExploreFormData } from "@/schemas/explore";
 
-export const RecommendationListSchema = z.array(RecommendationSchema);
-
 /**
- * Modul 7: hasil rekomendasi diperlakukan sebagai Server State.
+ * Modul 7: rencana paket makan diperlakukan sebagai Server State.
  * Query hanya berjalan saat `payload` tersedia (setelah user submit form),
- * hasilnya di-cache berdasarkan hash parameter agar tidak fetch berulang
- * (stale-while-revalidate: staleTime 5 menit).
+ * hasilnya di-cache berdasarkan hash parameter agar tidak fetch berulang.
  */
 export function useRecommendations(payload: ExploreFormData | null) {
   const hash = payload ? hashObject(payload) : "idle";
@@ -23,7 +19,7 @@ export function useRecommendations(payload: ExploreFormData | null) {
     queryKey: queryKeys.recommendations.byHash(hash),
     queryFn: () => {
       if (!payload) throw new Error("Parameter rekomendasi belum diisi");
-      return apiSend("/api/recommendations", "POST", payload, RecommendationListSchema);
+      return apiSend("/api/recommendations", "POST", payload, MealPlanSchema);
     },
     enabled: payload !== null,
     staleTime: 1000 * 60 * 5,

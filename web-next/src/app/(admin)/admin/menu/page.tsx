@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { AdminPageHeader, AdminTable, AdminCell } from "@/components/admin-table";
-import { formatRupiah } from "@/lib/utils";
-import { getAdminRecipes } from "@/server/admin-data";
+import { AdminRecipes } from "@/components/admin-recipes";
+import { AdminPageHeader } from "@/components/admin-table";
+import { listAdminIngredients, listAdminRecipes, listFoodSafety } from "@/server/admin-master";
 
 export const metadata: Metadata = {
   title: "Kelola Menu & Resep",
@@ -10,26 +10,19 @@ export const metadata: Metadata = {
 
 /** FR-22 & FR-30: pengelolaan data master menu/resep. */
 export default async function AdminRecipesPage() {
-  const recipes = await getAdminRecipes();
+  const [recipes, ingredients, safetyEntries] = await Promise.all([
+    listAdminRecipes(),
+    listAdminIngredients(),
+    listFoodSafety(),
+  ]);
 
   return (
     <div>
       <AdminPageHeader
         title="Menu & Resep"
-        description="Daftar menu beserta estimasi biaya dan status pangan lokal."
+        description="Tambah, ubah, dan hapus menu beserta komposisi bahan. Gizi menu dihitung ulang otomatis."
       />
-      <AdminTable headers={["Nama Menu", "Kategori", "Porsi", "Estimasi Biaya", "Lokal", "Musim"]}>
-        {recipes.map((recipe) => (
-          <tr key={recipe.id}>
-            <AdminCell>{recipe.name}</AdminCell>
-            <AdminCell>{recipe.category}</AdminCell>
-            <AdminCell>{recipe.servings}</AdminCell>
-            <AdminCell>{formatRupiah(recipe.estimatedCost)}</AdminCell>
-            <AdminCell>{recipe.isLocal ? "Ya" : "Tidak"}</AdminCell>
-            <AdminCell>{recipe.inSeason ? "Ya" : "Tidak"}</AdminCell>
-          </tr>
-        ))}
-      </AdminTable>
+      <AdminRecipes items={recipes} ingredients={ingredients} safetyEntries={safetyEntries} />
     </div>
   );
 }

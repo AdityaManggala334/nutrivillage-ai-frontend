@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { getUserIdFromRequest } from "@/server/auth";
 import {
   deleteShoppingItem,
   generateShoppingList,
@@ -22,9 +23,9 @@ const PatchBodySchema = z.union([
   z.object({ note: z.string() }),
 ]);
 
-/** GET /api/shopping-list — daftar belanja tersimpan (FR-16). */
-export async function GET(): Promise<NextResponse> {
-  const list = await getShoppingList();
+/** GET /api/shopping-list — daftar belanja tersimpan (FR-16, per pengguna). */
+export async function GET(request: Request): Promise<NextResponse> {
+  const list = await getShoppingList(getUserIdFromRequest(request));
   return NextResponse.json(list);
 }
 
@@ -33,11 +34,12 @@ export async function POST(request: Request): Promise<NextResponse> {
   const parsed = await parseJsonBody(request, GenerateBodySchema);
   if (!parsed.ok) return parsed.response;
 
+  const userId = getUserIdFromRequest(request);
   try {
     const list =
       "weekId" in parsed.data
-        ? await generateShoppingList(parsed.data.weekId)
-        : await generateShoppingListFromRecipe(parsed.data.recipeId);
+        ? await generateShoppingList(userId, parsed.data.weekId)
+        : await generateShoppingListFromRecipe(userId, parsed.data.recipeId);
     return NextResponse.json(list, { status: 201 });
   } catch (error) {
     return jsonError(error instanceof Error ? error.message : "Gagal membuat daftar belanja", 400);
@@ -49,10 +51,11 @@ export async function PATCH(request: Request): Promise<NextResponse> {
   const parsed = await parseJsonBody(request, PatchBodySchema);
   if (!parsed.ok) return parsed.response;
 
+  const userId = getUserIdFromRequest(request);
   const list =
     "note" in parsed.data
-      ? await updateShoppingNote(parsed.data.note)
-      : await toggleShoppingItem(parsed.data.itemId);
+      ? await updateShoppingNote(userId, parsed.data.note)
+      : await toggleShoppingItem(userId, parsed.data.itemId);
   return NextResponse.json(list);
 }
 
@@ -61,6 +64,6 @@ export async function DELETE(request: Request): Promise<NextResponse> {
   const { searchParams } = new URL(request.url);
   const itemId = searchParams.get("itemId");
   if (!itemId) return jsonError("Parameter itemId wajib diisi", 400);
-  const list = await deleteShoppingItem(itemId);
+  const list = await deleteShoppingItem(getUserIdFromRequest(request), itemId);
   return NextResponse.json(list);
 }

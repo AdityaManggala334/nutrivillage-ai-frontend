@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { AdminCell, AdminPageHeader, AdminStatusBadge, AdminTable } from "@/components/admin-table";
 import { formatDateId } from "@/lib/utils";
-import { getScraperLogs } from "@/server/admin-data";
+import { listScraperLogs } from "@/server/admin-master";
 
 export const metadata: Metadata = {
   title: "Monitoring Scraper",
@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 /** FR-31 & FR-34: monitoring status dan log kegagalan scraper. */
 export default async function AdminMonitoringPage() {
-  const logs = await getScraperLogs();
+  const logs = await listScraperLogs();
   const failures = logs.filter((log) => log.status === "failed").length;
 
   return (

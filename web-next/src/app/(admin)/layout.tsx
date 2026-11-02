@@ -20,7 +20,11 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   if (role !== "admin") redirect("/dashboard");
 
   return (
-    <div className="min-h-screen bg-stone-100 dark:bg-stone-950">
+    <div className="relative isolate min-h-screen bg-stone-100 dark:bg-stone-950">
+      <div aria-hidden="true" className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+        <div className="animate-mesh absolute -top-32 left-1/3 h-96 w-96 rounded-full bg-brand-200/40 blur-3xl dark:bg-brand-900/25" />
+        <div className="animate-mesh absolute bottom-0 -right-24 h-96 w-96 rounded-full bg-harvest-200/40 blur-3xl [animation-delay:-9s] dark:bg-harvest-900/20" />
+      </div>
       <div className="flex w-full">
         <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-stone-900 p-4 lg:flex">
           <Link href="/" className="mb-6 flex items-center gap-2.5 px-2">

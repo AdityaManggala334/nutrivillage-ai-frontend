@@ -16,90 +16,32 @@ import {
 import Link from "next/link";
 import { ErrorState } from "@/components/error-state";
 import { Badge, Button, ButtonLink, RecipeCardSkeleton } from "@/components/ui";
+import { MealPlanResults } from "@/components/meal-plan-results";
 import { useRecommendations } from "@/hooks/use-recommendations";
 import { useProfile } from "@/hooks/use-profile";
 import { useSession } from "@/hooks/use-session";
 import { formatRupiah } from "@/lib/utils";
-import type { AgeCounts, ExploreFormData } from "@/schemas/explore";
+import type { ExploreFormData } from "@/schemas/explore";
 import type { FamilyProfile } from "@/schemas/profile";
-import type { Recommendation } from "@/schemas/domain";
-
-const countByAgeGroup = (profile: FamilyProfile): AgeCounts => {
-  const counts: AgeCounts = { balita: 0, anak: 0, dewasa: 0, lansia: 0 };
-  for (const member of profile.members) {
-    counts[member.ageGroup] += 1;
-  }
-  return counts;
-};
 
 const toPayload = (profile: FamilyProfile): ExploreFormData => ({
   dailyBudget: profile.dailyBudget,
-  days: 3,
   goal: "seimbang",
-  members: countByAgeGroup(profile),
+  members: profile.members.map((member) => ({
+    name: member.name,
+    age: member.age,
+    gender: member.gender,
+    weightKg: member.weightKg,
+    heightCm: member.heightCm ?? 160,
+    activityLevel: member.activityLevel,
+    allergies: member.allergies,
+  })),
   preferences: profile.preferences,
   allergies: profile.avoidedIngredients,
   location: profile.region,
+  mealsPerDay: profile.mealsPerDay,
+  includeSusu: profile.includeSusu,
 });
-
-function RecommendationCard({ recommendation }: { recommendation: Recommendation }) {
-  const { recipe, scores } = recommendation;
-  return (
-    <article className="group flex flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white transition hover:border-brand-300 hover:shadow-sm">
-      <div className="relative flex h-40 items-center justify-center border-b border-stone-100 bg-brand-50">
-        <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white text-brand-600 shadow-sm">
-          <Leaf className="size-8" aria-hidden="true" />
-        </span>
-        <span className="absolute top-4 left-4 rounded-full border border-brand-200 bg-white px-3 py-1 text-[11px] font-semibold text-brand-700">
-          {recipe.category}
-        </span>
-        <span
-          className="absolute top-4 right-4 flex h-11 w-11 items-center justify-center rounded-full bg-brand-600 text-sm font-bold text-white tabular-nums"
-          aria-label={`Skor ${scores.total} dari 100`}
-        >
-          {scores.total}
-        </span>
-      </div>
-
-      <div className="flex flex-1 flex-col p-5">
-        <h3 className="text-base font-bold text-stone-900">{recipe.name}</h3>
-        <p className="mt-1 text-xs text-stone-400">{recipe.servings} porsi</p>
-        <p className="mt-3 line-clamp-2 text-xs leading-relaxed text-stone-500">
-          {recipe.description}
-        </p>
-
-        <div className="mt-4 grid grid-cols-3 divide-x divide-stone-100 overflow-hidden rounded-xl border border-stone-100">
-          {[
-            { label: "Kalori", value: `${recipe.nutrition.calories}` },
-            { label: "Protein", value: `${recipe.nutrition.protein} g` },
-            { label: "Serat", value: `${recipe.nutrition.fiber} g` },
-          ].map((item) => (
-            <div key={item.label} className="p-2 text-center">
-              <p className="text-[10px] text-stone-400">{item.label}</p>
-              <p className="mt-0.5 text-xs font-bold text-stone-800 tabular-nums">{item.value}</p>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-auto flex items-end justify-between border-t border-stone-100 pt-4">
-          <div>
-            <p className="text-[10px] text-stone-400">Estimasi biaya</p>
-            <p className="mt-0.5 text-sm font-bold text-brand-700 tabular-nums">
-              {formatRupiah(recipe.estimatedCost)}
-            </p>
-          </div>
-          <Link
-            href={`/recipes/${recipe.id}`}
-            className="flex items-center gap-1 text-xs font-semibold text-stone-600 hover:text-brand-700"
-          >
-            Lihat detail
-            <ArrowRight className="size-4" aria-hidden="true" />
-          </Link>
-        </div>
-      </div>
-    </article>
-  );
-}
 
 function QuickAction({
   title,
@@ -115,7 +57,7 @@ function QuickAction({
   return (
     <Link
       href={href}
-      className="group flex items-center gap-4 rounded-xl border border-stone-200 bg-white p-4 text-left transition hover:border-brand-200 hover:bg-brand-50/40 dark:hover:border-brand-800 dark:hover:bg-brand-950/20"
+      className="glass-subtle lift group flex items-center gap-4 rounded-xl p-4 text-left"
     >
       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
         <Icon className="size-[19px]" aria-hidden="true" />
@@ -145,7 +87,7 @@ export function DashboardHome() {
   return (
     <div className="space-y-7">
       {/* Greeting */}
-      <section>
+      <section className="animate-fade-up">
         <p className="text-xs font-medium text-brand-700">Selamat datang kembali</p>
         <div className="mt-1 flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -166,7 +108,7 @@ export function DashboardHome() {
 
       {/* Profile summary */}
       {profileQuery.isPending ? (
-        <div className="h-32 animate-pulse rounded-2xl border border-stone-200 bg-white" />
+        <div className="glass-subtle h-32 animate-pulse rounded-2xl" />
       ) : !profile ? (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-900 dark:bg-amber-950/40">
           <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
@@ -180,7 +122,7 @@ export function DashboardHome() {
           </div>
         </div>
       ) : (
-        <section className="overflow-hidden rounded-2xl border border-stone-200 bg-white">
+        <section className="glass overflow-hidden rounded-2xl">
           <div className="flex items-start justify-between gap-5 border-b border-stone-100 p-5 md:p-6">
             <div>
               <div className="flex items-center gap-2">
@@ -267,7 +209,7 @@ export function DashboardHome() {
             </div>
 
             {!profile ? (
-              <div className="rounded-2xl border border-stone-200 bg-white p-8 text-center">
+              <div className="glass-subtle rounded-2xl p-8 text-center">
                 <p className="text-sm font-semibold text-stone-800">Belum ada rekomendasi</p>
                 <p className="mx-auto mt-1 max-w-md text-xs leading-relaxed text-stone-500">
                   Lengkapi profil keluarga terlebih dahulu, lalu buat rekomendasi melalui Explore.
@@ -300,8 +242,8 @@ export function DashboardHome() {
                   </Button>
                 }
               />
-            ) : (recommendations.data ?? []).length === 0 ? (
-              <div className="rounded-2xl border border-stone-200 bg-white p-8 text-center">
+            ) : !recommendations.data || recommendations.data.meals.length === 0 ? (
+              <div className="glass-subtle rounded-2xl p-8 text-center">
                 <p className="text-sm font-semibold text-stone-800">Belum ada rekomendasi</p>
                 <p className="mx-auto mt-1 max-w-md text-xs leading-relaxed text-stone-500">
                   Coba buat rekomendasi menu melalui Explore berdasarkan kebutuhan keluarga.
@@ -311,11 +253,7 @@ export function DashboardHome() {
                 </div>
               </div>
             ) : (
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {(recommendations.data ?? []).slice(0, 3).map((recommendation) => (
-                  <RecommendationCard key={recommendation.id} recommendation={recommendation} />
-                ))}
-              </div>
+              <MealPlanResults plan={recommendations.data!} compact />
             )}
           </section>
 
@@ -339,7 +277,7 @@ export function DashboardHome() {
 
         {/* Right column */}
         <aside className="space-y-4">
-          <section className="rounded-2xl border border-stone-200 bg-white p-5">
+          <section className="glass rounded-2xl p-5">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-[11px] font-medium text-stone-400">Budget Harian</p>
@@ -351,15 +289,15 @@ export function DashboardHome() {
                 <Wallet className="size-[18px]" />
               </span>
             </div>
-            <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-stone-100">
-              <div className="h-full w-[62%] rounded-full bg-brand-500" />
+            <div className="mt-4 border-t border-stone-200/70 pt-3 dark:border-stone-700/60">
+              <p className="text-[10px] leading-relaxed text-stone-400">
+                Batas anggaran bahan pangan harian yang dipakai mesin rekomendasi. Ubah melalui
+                Pengaturan Profil.
+              </p>
             </div>
-            <p className="mt-2 text-[10px] text-stone-400">
-              Estimasi budget berdasarkan profil keluarga
-            </p>
           </section>
 
-          <section className="rounded-2xl border border-stone-200 bg-white p-5">
+          <section className="glass rounded-2xl p-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Leaf className="size-[18px] text-brand-700" aria-hidden="true" />
@@ -370,7 +308,7 @@ export function DashboardHome() {
               </Link>
             </div>
             <p className="mt-1 text-[11px] text-stone-400">
-              Bahan yang sedang tersedia di wilayah Madiun.
+              Contoh komoditas yang bisa tersedia di wilayah Madiun.
             </p>
             <div className="mt-4 grid grid-cols-3 gap-2">
               {[

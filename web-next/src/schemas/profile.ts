@@ -30,6 +30,12 @@ const commaSeparatedList = z.string().transform((value) =>
     .filter((item) => item.length > 0),
 );
 
+/** Menerima array pilihan (chip) ATAU string dipisah koma (kompatibilitas). */
+const stringList = z.union([
+  z.array(z.string().trim().min(1)),
+  commaSeparatedList,
+]);
+
 export const familyMemberFormSchema = z
   .object({
     name: z.string().trim().min(2, "Nama anggota minimal 2 karakter").max(100),
@@ -43,8 +49,12 @@ export const familyMemberFormSchema = z
       .number()
       .positive("Berat badan harus lebih dari 0")
       .max(250, "Berat badan tidak wajar"),
+    heightCm: z.coerce
+      .number()
+      .min(50, "Tinggi badan minimal 50 cm")
+      .max(250, "Tinggi badan maksimal 250 cm"),
     activityLevel: ActivityLevelSchema,
-    allergies: commaSeparatedList,
+    allergies: stringList,
   })
   .transform((member) => ({
     ...member,
@@ -57,8 +67,14 @@ export const familyProfileFormSchema = z.object({
     .positive("Budget harian harus lebih dari 0")
     .max(50_000_000, "Budget harian tidak wajar"),
   region: z.string().trim().min(3, "Wilayah wajib diisi"),
-  preferences: commaSeparatedList,
-  avoidedIngredients: commaSeparatedList,
+  preferences: stringList,
+  avoidedIngredients: stringList,
+  mealsPerDay: z.coerce
+    .number()
+    .int("Frekuensi makan harus bilangan bulat")
+    .min(1, "Minimal 1 kali makan per hari")
+    .max(5, "Maksimal 5 kali makan per hari"),
+  includeSusu: z.boolean(),
   members: z.array(familyMemberFormSchema).min(1, "Minimal 1 anggota keluarga"),
 });
 
@@ -78,6 +94,7 @@ export const FamilyMemberSchema = z.object({
   ageGroup: AgeGroupSchema,
   gender: GenderSchema,
   weightKg: z.number().positive(),
+  heightCm: z.number().positive().nullable(),
   activityLevel: ActivityLevelSchema,
   allergies: z.array(z.string()),
 });
@@ -89,6 +106,8 @@ export const FamilyProfileSchema = z.object({
   members: z.array(FamilyMemberSchema).min(1),
   preferences: z.array(z.string()),
   avoidedIngredients: z.array(z.string()),
+  mealsPerDay: z.number().int().min(1).max(5),
+  includeSusu: z.boolean(),
   onboarded: z.boolean(),
   updatedAt: z.string().min(1),
 });

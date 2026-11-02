@@ -1,5 +1,6 @@
 import { ArrowLeft, Clock, Users } from "lucide-react";
 import Link from "next/link";
+import { FoodSafetyNote } from "@/components/food-safety-note";
 import { NutritionFacts } from "@/components/nutrition-facts";
 import { PriceDisclaimer } from "@/components/price-disclaimer";
 import { PriceFreshnessBadge } from "@/components/price-freshness-badge";
@@ -33,6 +34,7 @@ export function RecipeDetail({ recipe }: RecipeDetailProps) {
         <div className="space-y-6">
           <RecipeImage
             imageKey={recipe.imageKey}
+            imageUrl={recipe.imageUrl}
             alt={recipe.imageAlt}
             className="h-56 w-full rounded-2xl sm:h-72"
             priority
@@ -63,6 +65,8 @@ export function RecipeDetail({ recipe }: RecipeDetailProps) {
           </div>
 
           <NutritionFacts nutrition={recipe.nutrition} servings={recipe.servings} />
+
+          <FoodSafetyNote recipe={recipe} />
 
           <RecipeSteps recipe={recipe} />
         </div>

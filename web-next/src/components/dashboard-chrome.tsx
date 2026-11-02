@@ -10,13 +10,15 @@ import {
   Leaf,
   LogOut,
   Menu,
+  School,
+  Settings,
   ShieldCheck,
   ShoppingCart,
   User,
 } from "lucide-react";
 import * as Popover from "@radix-ui/react-popover";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useNotifications } from "@/hooks/use-notifications";
@@ -36,22 +38,68 @@ interface NavLink {
   readonly badge?: string;
 }
 
-const MENU_LINKS: readonly NavLink[] = [
-  { label: "Beranda", href: "/dashboard", icon: Home },
-  { label: "Explore", href: "/explore", icon: Compass },
-  { label: "Meal Planner", href: "/meal-planner", icon: Calendar },
-  { label: "Daftar Belanja", href: "/shopping-list", icon: ShoppingCart, badge: "0" },
+interface NavGroup {
+  readonly title: string;
+  readonly links: readonly NavLink[];
+}
+
+const FAMILY_NAV: readonly NavGroup[] = [
+  {
+    title: "Menu",
+    links: [
+      { label: "Beranda", href: "/dashboard", icon: Home },
+      { label: "Explore", href: "/explore", icon: Compass },
+      { label: "Meal Planner", href: "/meal-planner", icon: Calendar },
+      { label: "Daftar Belanja", href: "/shopping-list", icon: ShoppingCart },
+    ],
+  },
+  {
+    title: "Aktivitas",
+    links: [
+      { label: "Riwayat", href: "/history", icon: History },
+      { label: "Favorit", href: "/favorites", icon: Heart },
+    ],
+  },
+  {
+    title: "Akun",
+    links: [
+      { label: "Profil", href: "/profile", icon: User },
+      { label: "Notifikasi", href: "/notifications", icon: Bell },
+    ],
+  },
 ];
 
-const ACTIVITY_LINKS: readonly NavLink[] = [
-  { label: "Riwayat", href: "/history", icon: History },
-  { label: "Favorit", href: "/favorites", icon: Heart },
+const SPPG_NAV: readonly NavGroup[] = [
+  {
+    title: "SPPG",
+    links: [
+      { label: "Dashboard SPPG", href: "/sppg", icon: Home },
+      { label: "Data Sekolah", href: "/sppg/schools", icon: School },
+    ],
+  },
+  {
+    title: "Menu Massal",
+    links: [
+      { label: "Explore Menu", href: "/sppg/explore", icon: Compass },
+      { label: "Meal Planner", href: "/sppg/meal-planner", icon: Calendar },
+      { label: "Daftar Belanja", href: "/sppg/shopping-list", icon: ShoppingCart },
+    ],
+  },
+  {
+    title: "Akun",
+    links: [
+      { label: "Pengaturan", href: "/sppg/settings", icon: Settings },
+      { label: "Notifikasi", href: "/notifications", icon: Bell },
+    ],
+  },
 ];
 
-const ACCOUNT_LINKS: readonly NavLink[] = [
-  { label: "Profil", href: "/profile", icon: User },
-  { label: "Notifikasi", href: "/notifications", icon: Bell },
-];
+const ROLE_LABEL: Readonly<Record<string, string>> = {
+  user: "Masyarakat",
+  petugas_sppg: "Petugas SPPG",
+  admin: "Admin",
+  guest: "Tamu",
+};
 
 function NavItem({ item }: { item: NavLink }) {
   const pathname = usePathname();
@@ -105,15 +153,14 @@ function NavSection({ title, links }: { title: string; links: readonly NavLink[]
 export function DashboardSidebar() {
   const isSidebarOpen = useUIStore((state) => state.isSidebarOpen);
   const setSidebarOpen = useUIStore((state) => state.setSidebarOpen);
-  const router = useRouter();
   const { data: user } = useSession();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
     await fetch("/api/auth/logout", { method: "POST" });
-    router.replace("/login");
-    router.refresh();
+    // Reload penuh: menjamin semua cache/state user sebelumnya terhapus.
+    window.location.assign("/login");
   };
 
   return (
@@ -129,7 +176,7 @@ export function DashboardSidebar() {
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 flex w-[245px] flex-col border-r border-stone-200 bg-white transition-transform lg:translate-x-0",
+          "glass-strong fixed inset-y-0 left-0 z-40 flex w-[245px] flex-col border-x-0 border-t-0 border-r border-white/40 transition-transform lg:translate-x-0 dark:border-white/10",
           isSidebarOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
@@ -146,9 +193,9 @@ export function DashboardSidebar() {
         </div>
 
         <nav className="flex-1 overflow-y-auto px-4 py-4">
-          <NavSection title="Menu" links={MENU_LINKS} />
-          <NavSection title="Aktivitas" links={ACTIVITY_LINKS} />
-          <NavSection title="Akun" links={ACCOUNT_LINKS} />
+          {(user?.role === "petugas_sppg" ? SPPG_NAV : FAMILY_NAV).map((group) => (
+            <NavSection key={group.title} title={group.title} links={group.links} />
+          ))}
 
           {user?.role === "admin" ? (
             <div className="mt-8">
@@ -177,7 +224,7 @@ export function DashboardSidebar() {
                 {user?.name ?? "Pengguna"}
               </p>
               <p className="text-[11px] text-stone-400">
-                {user?.role === "guest" ? "Tamu" : "Pengguna"}
+                {user ? (ROLE_LABEL[user.role] ?? "Pengguna") : "Pengguna"}
               </p>
             </div>
             <button
@@ -226,7 +273,7 @@ function NotificationBell() {
         <Popover.Content
           align="end"
           sideOffset={8}
-          className="z-50 w-80 max-w-[calc(100vw-2rem)] rounded-2xl border border-stone-200 bg-white p-2 shadow-xl focus:outline-none dark:border-stone-800 dark:bg-stone-900"
+          className="glass-strong z-50 w-80 max-w-[calc(100vw-2rem)] rounded-2xl p-2 focus:outline-none"
         >
           <div className="flex items-center justify-between px-2 py-1.5">
             <span className="text-sm font-semibold text-stone-800 dark:text-stone-100">
@@ -300,7 +347,7 @@ export function DashboardTopbar() {
   return (
     <>
       {/* Mobile header */}
-      <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-stone-200 bg-white/95 px-4 backdrop-blur lg:hidden dark:border-stone-800 dark:bg-stone-900/95">
+      <header className="glass sticky top-0 z-30 flex h-16 items-center justify-between border-x-0 border-t-0 border-b border-white/50 px-4 lg:hidden dark:border-white/10">
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -324,7 +371,7 @@ export function DashboardTopbar() {
       </header>
 
       {/* Desktop topbar */}
-      <header className="hidden h-[72px] items-center justify-between border-b border-stone-200 bg-white px-8 lg:flex">
+      <header className="glass sticky top-0 z-30 hidden h-[72px] items-center justify-between border-x-0 border-t-0 border-b border-white/50 px-8 lg:flex dark:border-white/10">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-stone-50 text-stone-500">
             <Compass className="size-[18px]" aria-hidden="true" />

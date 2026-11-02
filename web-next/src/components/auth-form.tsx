@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { GuestLoginButton } from "@/components/guest-login-button";
 import { Button, FieldError, Input, Label } from "@/components/ui";
@@ -8,8 +7,11 @@ import { useLoginMutation, useRegisterMutation } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import {
   LoginSchema,
+  REGISTRABLE_ROLE_LABELS,
   RegisterSchema,
   type AuthMode,
+  type AuthSession,
+  type RegistrableRole,
 } from "@/schemas/auth";
 
 interface FormErrors {
@@ -33,11 +35,19 @@ const TAB_CLASS = (isActive: boolean): string =>
       : "text-stone-500 hover:text-stone-700 dark:text-stone-400 dark:hover:text-stone-200",
   );
 
+const ROLE_CLASS = (isActive: boolean): string =>
+  cn(
+    "flex-1 rounded-lg border px-4 py-2.5 text-sm font-semibold transition-colors focus-visible:outline-none",
+    isActive
+      ? "border-brand-500 bg-brand-50 text-brand-800 dark:border-brand-500 dark:bg-brand-950/40 dark:text-brand-200"
+      : "border-stone-200 bg-white text-stone-600 hover:border-brand-300 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-300",
+  );
+
 /** FR-01, FR-02, FR-03: halaman login, registrasi, dan mode tamu. */
 export function AuthForm() {
-  const router = useRouter();
   const [mode, setMode] = useState<AuthMode>("login");
   const [serverError, setServerError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errors, setErrors] = useState<FormErrors>({});
 
   const [loginEmail, setLoginEmail] = useState("keluarga@nutrivillage.id");
@@ -47,6 +57,11 @@ export function AuthForm() {
   const [regEmail, setRegEmail] = useState("");
   const [regPassword, setRegPassword] = useState("");
   const [regConfirm, setRegConfirm] = useState("");
+  const [regRole, setRegRole] = useState<RegistrableRole>("user");
+  const [regNip, setRegNip] = useState("");
+  const [regSppgUnit, setRegSppgUnit] = useState("");
+  const [regRegion, setRegRegion] = useState("");
+  const [regPosition, setRegPosition] = useState("");
 
   const loginMutation = useLoginMutation();
   const registerMutation = useRegisterMutation();
@@ -55,26 +70,36 @@ export function AuthForm() {
     setMode(next);
     setErrors({});
     setServerError(null);
+    setSuccessMessage(null);
   };
 
-  const goToOnboarding = () => {
-    router.replace("/onboarding");
-    router.refresh();
+  /**
+   * Arahkan pengguna setelah autentikasi. Memakai navigasi penuh (reload) agar
+   * seluruh cache/state klien dibersihkan — mencegah data user sebelumnya
+   * terbawa saat berpindah akun.
+   */
+  const redirectAfterAuth = (session: AuthSession) => {
+    const target =
+      session.user.role === "admin"
+        ? "/admin"
+        : session.user.role === "petugas_sppg"
+          ? "/sppg/onboarding"
+          : "/onboarding";
+    window.location.assign(target);
   };
 
-  const goToAdmin = () => {
-    router.replace("/admin");
-    router.refresh();
-  };
-
-  /** Mengisi otomatis kredensial akun demo (pengguna / admin). */
-  const fillDemo = (role: "user" | "admin") => {
+  /** Mengisi otomatis kredensial akun demo. */
+  const fillDemo = (role: "user" | "admin" | "sppg") => {
     setMode("login");
     setErrors({});
     setServerError(null);
+    setSuccessMessage(null);
     if (role === "admin") {
       setLoginEmail("admin@nutrivillage.id");
       setLoginPassword("admin12345");
+    } else if (role === "sppg") {
+      setLoginEmail("sppg@nutrivillage.id");
+      setLoginPassword("sppg12345");
     } else {
       setLoginEmail("keluarga@nutrivillage.id");
       setLoginPassword("nutrivillage");
@@ -91,13 +116,7 @@ export function AuthForm() {
     setErrors({});
     setServerError(null);
     loginMutation.mutate(result.data, {
-      onSuccess: (session) => {
-        if (session.user.role === "admin") {
-          goToAdmin();
-        } else {
-          goToOnboarding();
-        }
-      },
+      onSuccess: redirectAfterAuth,
       onError: (error) => setServerError(error.message),
     });
   };
@@ -109,6 +128,11 @@ export function AuthForm() {
       email: regEmail,
       password: regPassword,
       confirmPassword: regConfirm,
+      role: regRole,
+      nip: regNip,
+      sppgUnit: regSppgUnit,
+      region: regRegion,
+      position: regPosition,
     });
     if (!result.success) {
       setErrors(mapIssues(result.error.issues));
@@ -117,7 +141,17 @@ export function AuthForm() {
     setErrors({});
     setServerError(null);
     registerMutation.mutate(result.data, {
-      onSuccess: goToOnboarding,
+      onSuccess: () => {
+        // FR-01: tidak auto-login. Kembali ke tab Masuk dengan form kosong.
+        setMode("login");
+        setErrors({});
+        setServerError(null);
+        setLoginEmail("");
+        setLoginPassword("");
+        setRegPassword("");
+        setRegConfirm("");
+        setSuccessMessage("Akun berhasil dibuat. Silakan masuk dengan akun Anda.");
+      },
       onError: (error) => setServerError(error.message),
     });
   };
@@ -127,7 +161,7 @@ export function AuthForm() {
   return (
     <section aria-labelledby="auth-title" className="app-container flex justify-center py-14">
       <div className="w-full max-w-md">
-        <div className="text-center">
+        <div className="animate-fade-up text-center">
           <h1 id="auth-title" className="text-3xl">
             {mode === "login" ? "Masuk ke Akun Anda" : "Daftar Akun Baru"}
           </h1>
@@ -138,8 +172,8 @@ export function AuthForm() {
           </p>
         </div>
 
-        <div className="rounded-card mt-8 bg-white p-6 shadow-card sm:p-8">
-          <div role="tablist" aria-label="Pilih mode autentikasi" className="flex gap-1 rounded-xl bg-stone-100 p-1">
+        <div className="glass-strong animate-scale-in rounded-3xl mt-8 p-6 sm:p-8">
+          <div role="tablist" aria-label="Pilih mode autentikasi" className="glass-subtle flex gap-1 rounded-xl p-1">
             <button
               role="tab"
               type="button"
@@ -167,8 +201,12 @@ export function AuthForm() {
             </p>
             <div className="mt-1.5 space-y-1 text-xs text-stone-600 dark:text-stone-300">
               <p>
-                Pengguna — <span className="font-mono">keluarga@nutrivillage.id</span> /{" "}
+                Masyarakat — <span className="font-mono">keluarga@nutrivillage.id</span> /{" "}
                 <span className="font-mono">nutrivillage</span>
+              </p>
+              <p>
+                Petugas SPPG — <span className="font-mono">sppg@nutrivillage.id</span> /{" "}
+                <span className="font-mono">sppg12345</span>
               </p>
               <p>
                 Admin — <span className="font-mono">admin@nutrivillage.id</span> /{" "}
@@ -177,7 +215,10 @@ export function AuthForm() {
             </div>
             <div className="mt-2 flex flex-wrap gap-2">
               <Button type="button" size="sm" intent="secondary" onClick={() => fillDemo("user")}>
-                Isi akun Pengguna
+                Isi akun Masyarakat
+              </Button>
+              <Button type="button" size="sm" intent="secondary" onClick={() => fillDemo("sppg")}>
+                Isi akun SPPG
               </Button>
               <Button type="button" size="sm" intent="outline" onClick={() => fillDemo("admin")}>
                 Isi akun Admin
@@ -193,6 +234,16 @@ export function AuthForm() {
                 className="mt-6 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-300"
               >
                 {serverError}
+              </div>
+            ) : null}
+
+            {successMessage ? (
+              <div
+                role="status"
+                aria-live="polite"
+                className="mt-6 rounded-xl bg-brand-50 px-4 py-3 text-sm text-brand-800 dark:bg-brand-950/50 dark:text-brand-200"
+              >
+                {successMessage}
               </div>
             ) : null}
 
@@ -242,6 +293,27 @@ export function AuthForm() {
               </form>
             ) : (
               <form onSubmit={handleRegister} noValidate className="mt-6 space-y-4">
+                {/* Pemilih peran: masyarakat biasa atau petugas SPPG MBG */}
+                <fieldset className="space-y-2">
+                  <legend className="text-sm font-medium text-stone-700 dark:text-stone-200">
+                    Daftar sebagai
+                  </legend>
+                  <div role="radiogroup" aria-label="Pilih jenis akun" className="flex gap-2">
+                    {(["user", "petugas_sppg"] as const).map((option) => (
+                      <button
+                        key={option}
+                        type="button"
+                        role="radio"
+                        aria-checked={regRole === option}
+                        className={ROLE_CLASS(regRole === option)}
+                        onClick={() => setRegRole(option)}
+                      >
+                        {REGISTRABLE_ROLE_LABELS[option]}
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+
                 <div className="space-y-1.5">
                   <Label htmlFor="register-name">Nama Lengkap</Label>
                   <Input
@@ -255,6 +327,60 @@ export function AuthForm() {
                   />
                   <FieldError>{errors.name}</FieldError>
                 </div>
+
+                {regRole === "petugas_sppg" ? (
+                  <>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="register-nip">NIP Petugas</Label>
+                      <Input
+                        id="register-nip"
+                        name="nip"
+                        placeholder="Contoh: 199203152019032007"
+                        value={regNip}
+                        invalid={Boolean(errors.nip)}
+                        onChange={(event) => setRegNip(event.target.value)}
+                      />
+                      <FieldError>{errors.nip}</FieldError>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="register-sppg-unit">Nama Unit SPPG</Label>
+                      <Input
+                        id="register-sppg-unit"
+                        name="sppgUnit"
+                        placeholder="Contoh: SPPG Dolopo"
+                        value={regSppgUnit}
+                        invalid={Boolean(errors.sppgUnit)}
+                        onChange={(event) => setRegSppgUnit(event.target.value)}
+                      />
+                      <FieldError>{errors.sppgUnit}</FieldError>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="register-region">Wilayah SPPG</Label>
+                      <Input
+                        id="register-region"
+                        name="region"
+                        placeholder="Contoh: Kec. Dolopo, Kab. Madiun"
+                        value={regRegion}
+                        invalid={Boolean(errors.region)}
+                        onChange={(event) => setRegRegion(event.target.value)}
+                      />
+                      <FieldError>{errors.region}</FieldError>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="register-position">Jabatan (opsional)</Label>
+                      <Input
+                        id="register-position"
+                        name="position"
+                        placeholder="Contoh: Ahli Gizi"
+                        value={regPosition}
+                        invalid={Boolean(errors.position)}
+                        onChange={(event) => setRegPosition(event.target.value)}
+                      />
+                      <FieldError>{errors.position}</FieldError>
+                    </div>
+                  </>
+                ) : null}
+
                 <div className="space-y-1.5">
                   <Label htmlFor="register-email">Email</Label>
                   <Input

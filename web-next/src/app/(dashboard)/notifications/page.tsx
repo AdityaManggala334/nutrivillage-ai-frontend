@@ -45,7 +45,7 @@ export default async function NotificationsPage() {
             return (
               <li
                 key={notification.id}
-                className="flex gap-3 rounded-2xl border border-stone-200 bg-white p-4 dark:border-stone-800 dark:bg-stone-900"
+                className="glass-subtle flex gap-3 rounded-2xl p-4"
               >
                 <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-700 dark:bg-brand-950 dark:text-brand-300">
                   <Icon className="size-4" aria-hidden="true" />

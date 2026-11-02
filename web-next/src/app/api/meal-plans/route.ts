@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { DayOfWeekSchema, MealSlotSchema } from "@/schemas/domain";
+import { getUserIdFromRequest } from "@/server/auth";
 import {
   assignMealPlanEntry,
   getMealPlan,
@@ -20,11 +21,11 @@ const AssignMealBodySchema = z.object({
   note: z.string(),
 });
 
-/** GET /api/meal-plans?week=... — FR-27. */
+/** GET /api/meal-plans?week=... — FR-27 (per pengguna). */
 export async function GET(request: Request): Promise<NextResponse> {
   const { searchParams } = new URL(request.url);
   const weekId = searchParams.get("week") ?? DEFAULT_WEEK;
-  const mealPlan = await getMealPlan(weekId);
+  const mealPlan = await getMealPlan(getUserIdFromRequest(request), weekId);
   return NextResponse.json(mealPlan);
 }
 
@@ -34,7 +35,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   if (!parsed.ok) return parsed.response;
 
   try {
-    const entry = await assignMealPlanEntry(parsed.data);
+    const entry = await assignMealPlanEntry(getUserIdFromRequest(request), parsed.data);
     return NextResponse.json(entry, { status: 201 });
   } catch (error) {
     return jsonError(error instanceof Error ? error.message : "Gagal menjadwalkan menu", 400);
@@ -49,6 +50,9 @@ export async function DELETE(request: Request): Promise<NextResponse> {
   if (!entryId) {
     return jsonError("Parameter entryId wajib diisi", 400);
   }
-  const result = await removeMealPlanEntry({ weekId, entryId });
+  const result = await removeMealPlanEntry(getUserIdFromRequest(request), {
+    weekId,
+    entryId,
+  });
   return NextResponse.json(result);
 }

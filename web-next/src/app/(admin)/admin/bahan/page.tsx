@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { AdminPageHeader, AdminTable, AdminCell } from "@/components/admin-table";
-import { formatRupiah } from "@/lib/utils";
-import { getAdminIngredients } from "@/server/admin-data";
+import { AdminIngredients } from "@/components/admin-ingredients";
+import { AdminPageHeader } from "@/components/admin-table";
+import { listAdminIngredients } from "@/server/admin-master";
 
 export const metadata: Metadata = {
   title: "Kelola Bahan Pangan",
@@ -10,26 +10,15 @@ export const metadata: Metadata = {
 
 /** FR-22 & FR-30: pengelolaan data master bahan pangan. */
 export default async function AdminIngredientsPage() {
-  const ingredients = await getAdminIngredients();
+  const ingredients = await listAdminIngredients();
 
   return (
     <div>
       <AdminPageHeader
         title="Bahan Pangan"
-        description="Data master bahan pangan beserta status lokal dan musim."
+        description="Tambah, ubah, dan hapus bahan. Perubahan langsung dipakai mesin rekomendasi."
       />
-      <AdminTable headers={["Nama", "Kategori", "Satuan", "Lokal", "Musim", "Harga Terakhir"]}>
-        {ingredients.map((item) => (
-          <tr key={item.id}>
-            <AdminCell>{item.name}</AdminCell>
-            <AdminCell>{item.category}</AdminCell>
-            <AdminCell>{item.unit}</AdminCell>
-            <AdminCell>{item.isLocal ? "Ya" : "Tidak"}</AdminCell>
-            <AdminCell>{item.isInSeason ? "Ya" : "Tidak"}</AdminCell>
-            <AdminCell>{formatRupiah(item.latestPrice)}</AdminCell>
-          </tr>
-        ))}
-      </AdminTable>
+      <AdminIngredients items={ingredients} />
     </div>
   );
 }

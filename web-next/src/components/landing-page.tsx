@@ -1,6 +1,5 @@
 import {
   Bot,
-  Brain,
   BookOpen,
   Calendar,
   Check,
@@ -8,6 +7,7 @@ import {
   Clock,
   Leaf,
   Plus,
+  Scale,
   ShoppingCart,
   Sparkles,
   Tag,
@@ -17,7 +17,8 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { GuestLoginButton } from "@/components/guest-login-button";
-import { Badge, ButtonLink } from "@/components/ui";
+import { Reveal } from "@/components/motion/reveal";
+import { Badge, ButtonLink, GlassCard } from "@/components/ui";
 
 /* Brand icons (tidak tersedia di lucide-react, diambil dari desain Modul 1-4). */
 const FacebookIcon = () => (
@@ -43,97 +44,106 @@ const YoutubeIcon = () => (
 
 const FEATURES = [
   {
-    Icon: Brain,
-    title: "AI Recommendation Engine",
+    Icon: Bot,
+    title: "Mesin Rekomendasi SAW",
     description:
-      "Algoritma cerdas yang menganalisis kebutuhan gizi keluarga dan mencocokkan dengan menu terbaik dalam hitungan detik.",
+      "Algoritma Simple Additive Weighting menyusun peringkat menu secara transparan dari kriteria gizi, anggaran, pangan lokal, dan musim.",
   },
   {
     Icon: Wallet,
-    title: "Budget-Aware Planning",
+    title: "Sadar Anggaran",
     description:
-      "Anggaran harian menjadi batas tegas. Menu yang melebihi budget otomatis tidak direkomendasikan. Transparan dan terkontrol.",
+      "Batas anggaran bahan pangan jadi pertimbangan utama. Setiap rekomendasi menampilkan estimasi biaya, bukan sekadar resep.",
   },
   {
     Icon: Leaf,
-    title: "100% Pangan Lokal Madiun",
+    title: "Berbasis Pangan Lokal",
     description:
-      "Memanfaatkan komoditas lokal Kabupaten Madiun yang sedang musim. Lebih murah, lebih segar, dukung petani lokal.",
+      "Mengutamakan komoditas lokal Kabupaten Madiun yang sedang musim agar lebih hemat dan segar.",
   },
   {
     Icon: Tag,
-    title: "Estimasi Biaya Real-time",
+    title: "Harga Terverifikasi",
     description:
-      "Setiap rekomendasi disertai estimasi biaya berdasarkan data harga pasar terkini yang diverifikasi admin.",
+      "Estimasi biaya mengacu pada data harga yang sumbernya tercatat dan status verifikasinya jelas.",
   },
   {
     Icon: Calendar,
-    title: "Meal Planner Mingguan",
+    title: "Perencanaan Beberapa Hari",
     description:
-      "Jadwalkan menu masak 7 hari ke depan. Sistem otomatis generate daftar belanja dari jadwal yang kamu buat.",
+      "Susun rencana menu hingga tujuh hari, lengkap dengan kebutuhan bahan pangan dari setiap menu.",
   },
   {
     Icon: ShoppingCart,
-    title: "Smart Shopping List",
+    title: "Daftar Belanja Otomatis",
     description:
-      "Daftar belanja otomatis dari Meal Planner. Tinggal centang saat belanja, tidak ada bahan yang terlewat.",
+      "Kebutuhan bahan pangan dihitung dari menu dan jumlah porsi, menggabungkan bahan yang sama setelah satuan diseragamkan.",
   },
 ] as const;
 
-const STATS = [
-  { value: "500+", label: "Resep Menu Lokal", Icon: BookOpen },
-  { value: "50+", label: "Bahan Pangan Madiun", Icon: Leaf },
-  { value: "30%", label: "Lebih Hemat Budget", Icon: TrendingUp },
-  { value: "100%", label: "Gizi Terjamin", Icon: Check },
+/* Kapabilitas sistem (bukan angka statistik produksi). */
+const CAPABILITIES = [
+  { value: "4", label: "Kriteria penilaian SAW", Icon: Scale },
+  { value: "7 hari", label: "Perencanaan menu", Icon: Calendar },
+  { value: "Lokal", label: "Prioritas komoditas Madiun", Icon: Leaf },
+  { value: "Terverifikasi", label: "Status sumber data harga", Icon: Check },
 ] as const;
 
 const STEPS = [
   {
     number: "01",
-    title: "Isi Data Keluarga",
+    title: "Isi Data Keluarga atau Sekolah",
     description:
-      "Masukkan jumlah anggota keluarga, usia, budget harian, dan alergi. Semudah mengisi profil media sosial.",
+      "Masyarakat mengisi data keluarga; Petugas SPPG mengelola sekolah dan jumlah siswa per kelompok penerima.",
     Icon: Users,
   },
   {
     number: "02",
-    title: "AI Meracik Menu",
+    title: "Mesin Menyusun Rekomendasi",
     description:
-      "Sistem menganalisis kebutuhan gizi, mencocokkan dengan bahan lokal yang sedang musim, dan meranking menu terbaik.",
+      "Kebutuhan gizi, anggaran bahan pangan, pangan lokal, dan musim dihitung untuk meranking menu terbaik.",
     Icon: Bot,
   },
   {
     number: "03",
-    title: "Masak & Nikmati",
+    title: "Rencanakan & Belanja",
     description:
-      "Dapatkan resep lengkap, estimasi biaya, dan daftar belanja otomatis. Tinggal masak, keluarga sehat!",
+      "Masukkan menu ke rencana beberapa hari, lalu peroleh kebutuhan bahan pangan dan estimasi biaya otomatis.",
     Icon: ChefHat,
   },
+] as const;
+
+const SCORING = [
+  { label: "Gizi", weight: "40%", tone: "brand" as const },
+  { label: "Anggaran", weight: "30%", tone: "harvest" as const },
+  { label: "Pangan lokal", weight: "15%", tone: "brand" as const },
+  { label: "Musim", weight: "15%", tone: "harvest" as const },
 ] as const;
 
 const FAQS = [
   {
     question: "Apakah NutriVillage AI gratis digunakan?",
     answer:
-      "Ya! Fitur dasar seperti Explore Menu, Meal Planner, dan Shopping List dapat diakses secara gratis. Kami percaya setiap keluarga berhak mendapatkan panduan gizi yang baik.",
+      "Ya. Fitur dasar seperti Explore Menu, Meal Planner, dan Shopping List dapat diakses secara gratis, termasuk mode tamu untuk melihat katalog.",
   },
   {
     question: "Bagaimana sistem menentukan menu yang direkomendasikan?",
     answer:
-      "Sistem menggunakan 4 parameter: skor gizi (40%), efisiensi budget (30%), ketersediaan musiman (15%), dan komoditas lokal Madiun (15%). Menu di atas budget otomatis tidak direkomendasikan.",
+      "Sistem memakai algoritma Simple Additive Weighting (SAW) dengan empat kriteria berbobot: gizi (40%), efisiensi anggaran bahan pangan (30%), ketersediaan pangan lokal (15%), dan kesesuaian musim (15%). Bobot dapat menyesuaikan tujuan gizi yang dipilih.",
   },
   {
     question: "Apakah data harga yang ditampilkan akurat?",
     answer:
-      "Data harga diperoleh dari scraper otomatis portal pemerintah dan diverifikasi oleh admin. Harga yang ditampilkan adalah estimasi berdasarkan data terkini. Harga aktual dapat berbeda sesuai lokasi dan waktu pembelian.",
+      "Harga mengacu pada data yang sumbernya tercatat dan berstatus verifikasi admin. Angka yang tampil adalah estimasi, bukan harga final di pasar. Harga aktual dapat berbeda sesuai lokasi dan waktu.",
   },
   {
     question: "Bisakah saya mengatur menu untuk anggota keluarga yang alergi?",
     answer:
-      "Tentu! Saat mengisi data keluarga, kamu bisa menandai bahan-bahan yang menjadi alergi atau pantangan. Sistem akan otomatis menghindari menu yang mengandung bahan tersebut.",
+      "Bisa. Saat mengisi data keluarga, tandai bahan alergi atau pantangan. Sistem akan menghindari menu yang memuat bahan tersebut.",
   },
 ] as const;
 
+/* Ilustrasi tampilan aplikasi (bukan data pengguna nyata). */
 const HERO_MENUS = [
   { name: "Nasi Pecel Madiun", score: 96, cost: "Rp 25.000" },
   { name: "Sayur Lodeh Tempe", score: 93, cost: "Rp 22.000" },
@@ -142,32 +152,23 @@ const HERO_MENUS = [
 ] as const;
 
 const WHY_ITEMS = [
-  { Icon: Sparkles, text: "Rekomendasi personal sesuai kebutuhan gizi keluarga" },
-  { Icon: Wallet, text: "Budget constraint yang ketat, tidak ada menu over-budget" },
-  { Icon: Leaf, text: "Dukung petani lokal dengan bahan musiman Madiun" },
-  { Icon: Clock, text: "Akses mudah dari mana saja, kapan saja" },
+  { Icon: Sparkles, text: "Rekomendasi personal sesuai kebutuhan gizi keluarga atau kelompok penerima" },
+  { Icon: Wallet, text: "Batas anggaran bahan pangan jadi pertimbangan utama, transparan dan dapat ditinjau" },
+  { Icon: Leaf, text: "Mendukung petani lokal dengan mengutamakan komoditas musiman Madiun" },
+  { Icon: Clock, text: "Akses mudah dari mana saja, dengan status loading dan error yang jelas" },
 ] as const;
 
-const TESTIMONIALS = [
-  {
-    name: "Ibu Sari",
-    role: "Ibu Rumah Tangga",
-    text: 'Akhirnya nggak pusing lagi mikir "hari ini masak apa". Menu yang direkomendasikan selalu pas di budget dan anak-anak suka!',
-    avatar: "A",
-  },
-  {
-    name: "Pak Budi",
-    role: "Karyawan Swasta",
-    text: "Fitur Meal Planner-nya keren banget. Saya bisa planning menu seminggu sekaligus, dan daftar belanjanya otomatis. Hemat waktu!",
-    avatar: "B",
-  },
-] as const;
-
-function SectionBadge({ children, tone = "brand" }: { children: ReactNode; tone?: "brand" | "harvest" }) {
+function SectionBadge({
+  children,
+  tone = "brand",
+}: {
+  children: ReactNode;
+  tone?: "brand" | "harvest";
+}) {
   return <Badge tone={tone}>{children}</Badge>;
 }
 
-/** Landing page (FR-03) — port desain penuh dari proyek Modul 1-4. */
+/** Landing page (FR-03) — redesign glassmorphism + animasi scroll. */
 export function LandingPage() {
   return (
     <div className="flex min-h-screen flex-col">
@@ -176,14 +177,19 @@ export function LandingPage() {
         aria-labelledby="hero-title"
         className="relative overflow-hidden bg-gradient-to-br from-brand-50 via-white to-harvest-50 dark:from-brand-950 dark:via-stone-950 dark:to-harvest-900/40"
       >
-        <div className="absolute top-20 left-10 h-72 w-72 rounded-full bg-brand-200/40 blur-3xl" />
-        <div className="absolute right-10 bottom-20 h-96 w-96 rounded-full bg-harvest-200/40 blur-3xl" />
-        <div className="absolute top-1/2 left-1/3 h-64 w-64 rounded-full bg-brand-300/20 blur-3xl" />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 overflow-hidden"
+        >
+          <div className="animate-mesh absolute top-16 left-10 h-72 w-72 rounded-full bg-brand-300/40 blur-3xl" />
+          <div className="animate-mesh absolute right-8 bottom-16 h-96 w-96 rounded-full bg-harvest-300/40 blur-3xl [animation-delay:-6s]" />
+          <div className="animate-mesh absolute top-1/3 left-1/3 h-64 w-64 rounded-full bg-brand-400/25 blur-3xl [animation-delay:-11s]" />
+        </div>
 
-        <div className="app-container relative py-20 lg:py-32">
+        <div className="app-container relative py-20 lg:py-28">
           <div className="grid items-center gap-12 lg:grid-cols-2">
-            <div className="space-y-8">
-              <div className="inline-flex items-center space-x-2 rounded-full border border-brand-200 bg-white/80 px-4 py-2 shadow-sm backdrop-blur-sm dark:border-brand-800 dark:bg-stone-900/80">
+            <Reveal className="space-y-8">
+              <div className="glass inline-flex items-center space-x-2 rounded-full px-4 py-2">
                 <span className="relative flex h-2 w-2">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-400 opacity-75" />
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-brand-500" />
@@ -198,19 +204,18 @@ export function LandingPage() {
                 className="text-4xl leading-tight font-black text-stone-900 sm:text-5xl lg:text-6xl"
               >
                 Makan Enak, Gizi Oke,{" "}
-                <span className="bg-gradient-to-r from-brand-600 to-brand-400 bg-clip-text text-transparent">
-                  Dompet Aman
-                </span>
+                <span className="text-gradient-brand">Dompet Aman</span>
               </h1>
 
               <p className="max-w-xl text-lg leading-relaxed text-stone-600">
-                NutriVillage AI membantu keluarga menyusun menu harian yang sesuai kebutuhan gizi,
-                batas anggaran, dan ketersediaan pangan musiman di Kabupaten Madiun.{" "}
+                NutriVillage AI membantu keluarga dan Petugas SPPG menyusun menu yang sesuai
+                kebutuhan gizi, batas anggaran bahan pangan, dan ketersediaan pangan musiman di
+                Kabupaten Madiun.{" "}
                 <strong className="text-stone-900">Anti ribet, anti boncos!</strong>
               </p>
 
               <div className="flex flex-wrap gap-4">
-                <ButtonLink size="lg" href="/login">
+                <ButtonLink size="lg" href="/login" className="press">
                   Mulai Eksplorasi Menu
                 </ButtonLink>
                 <GuestLoginButton variant="button" intent="secondary" size="lg">
@@ -218,7 +223,7 @@ export function LandingPage() {
                 </GuestLoginButton>
               </div>
 
-              <div className="flex items-center space-x-6 pt-4">
+              <div className="flex items-center space-x-6 pt-2">
                 <div className="flex -space-x-2">
                   {["A", "B", "C"].map((initial) => (
                     <div
@@ -230,14 +235,15 @@ export function LandingPage() {
                   ))}
                 </div>
                 <div className="text-sm text-stone-600">
-                  <strong className="text-stone-900">1000+ keluarga</strong> sudah menggunakan
+                  Untuk keluarga &amp; dapur SPPG di Madiun
                 </div>
               </div>
-            </div>
+            </Reveal>
 
-            {/* App mockup */}
-            <div className="relative">
-              <div className="relative rounded-3xl border border-stone-100 bg-white p-6 shadow-2xl">
+            {/* App mockup (ilustrasi) */}
+            <Reveal direction="scale" delay={120} className="relative">
+              <span className="sr-only">Ilustrasi tampilan aplikasi</span>
+              <GlassCard tone="strong" className="relative p-6">
                 <div className="mb-6 flex items-center justify-between">
                   <div>
                     <div className="mb-1 text-sm text-stone-500">Rekomendasi Hari Ini</div>
@@ -246,7 +252,7 @@ export function LandingPage() {
                     </div>
                   </div>
                   <Badge tone="harvest" className="px-2.5 py-1 text-xs">
-                    4 menu
+                    Contoh tampilan
                   </Badge>
                 </div>
 
@@ -254,7 +260,7 @@ export function LandingPage() {
                   {HERO_MENUS.map((item) => (
                     <div
                       key={item.name}
-                      className="flex items-center justify-between rounded-xl bg-stone-50 p-4 transition-colors hover:bg-brand-50 dark:hover:bg-stone-800"
+                      className="lift flex items-center justify-between rounded-xl bg-white/60 p-4 dark:bg-stone-800/50"
                     >
                       <div className="flex items-center space-x-3">
                         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-100 text-brand-600">
@@ -272,74 +278,79 @@ export function LandingPage() {
                   ))}
                 </div>
 
-                <div className="mt-6 rounded-xl border border-brand-100 bg-gradient-to-r from-brand-50 to-harvest-50 p-4 dark:border-brand-900 dark:from-brand-950/40 dark:to-harvest-900/30">
+                <div className="mt-6 rounded-xl border border-brand-100 bg-white/60 p-4 dark:border-brand-900 dark:bg-stone-800/40">
                   <div className="flex items-center space-x-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white text-brand-600 shadow-sm">
                       <Sparkles className="size-5" aria-hidden="true" />
                     </div>
                     <div className="text-sm text-stone-700">
-                      <strong>AI Insight:</strong> Tempe sedang musim panen di Madiun! Menu dengan
-                      tempe 40% lebih hemat hari ini.
+                      <strong>Skor SAW:</strong> setiap menu diberi skor 0–100 dari empat kriteria
+                      berbobot, sehingga peringkatnya bisa ditelusuri.
                     </div>
                   </div>
                 </div>
+              </GlassCard>
+
+              <div className="animate-float absolute -top-4 -right-4 rounded-2xl">
+                <GlassCard tone="strong" radius="2xl" className="p-4">
+                  <div className="flex items-center space-x-2">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-harvest-100 text-harvest-600">
+                      <TrendingUp className="size-5" aria-hidden="true" />
+                    </div>
+                    <div>
+                      <div className="text-xs text-stone-500">Estimasi biaya</div>
+                      <div className="font-bold text-brand-600">Per porsi</div>
+                    </div>
+                  </div>
+                </GlassCard>
               </div>
 
-              <div className="absolute -top-4 -right-4 animate-bounce rounded-2xl border border-stone-100 bg-white p-4 shadow-lg">
-                <div className="flex items-center space-x-2">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-harvest-100 text-harvest-600">
-                    <TrendingUp className="size-5" aria-hidden="true" />
+              <div className="animate-float absolute -bottom-4 -left-4 rounded-2xl [animation-delay:-3s]">
+                <GlassCard tone="strong" radius="2xl" className="p-4">
+                  <div className="flex items-center space-x-2">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-100 text-brand-600">
+                      <Check className="size-5" aria-hidden="true" />
+                    </div>
+                    <div>
+                      <div className="text-xs text-stone-500">Kriteria</div>
+                      <div className="font-bold text-brand-600">Gizi &amp; anggaran</div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="text-xs text-stone-500">Hemat Budget</div>
-                    <div className="font-bold text-brand-600">30%</div>
-                  </div>
-                </div>
+                </GlassCard>
               </div>
-
-              <div className="absolute -bottom-4 -left-4 rounded-2xl border border-stone-100 bg-white p-4 shadow-lg">
-                <div className="flex items-center space-x-2">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-100 text-brand-600">
-                    <Check className="size-5" aria-hidden="true" />
-                  </div>
-                  <div>
-                    <div className="text-xs text-stone-500">Gizi Terpenuhi</div>
-                    <div className="font-bold text-brand-600">95/100</div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            </Reveal>
           </div>
         </div>
       </section>
 
-      {/* STATS */}
-      <section aria-labelledby="stats-title" className="border-y border-stone-100 bg-white py-16">
+      {/* CAPABILITIES */}
+      <section aria-labelledby="capabilities-title" className="py-16">
         <div className="app-container">
-          <h2 id="stats-title" className="sr-only">
-            Statistik NutriVillage AI
+          <h2 id="capabilities-title" className="sr-only">
+            Kapabilitas NutriVillage AI
           </h2>
-          <div className="grid grid-cols-2 gap-6 lg:grid-cols-4">
-            {STATS.map(({ value, label, Icon }) => (
-              <div
-                key={label}
-                className="rounded-2xl border border-stone-100 bg-white p-6 text-center shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg"
-              >
-                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
-                  <Icon className="size-6" aria-hidden="true" />
-                </div>
-                <div className="mb-1 text-3xl font-black text-stone-900">{value}</div>
-                <div className="text-sm text-stone-600">{label}</div>
-              </div>
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            {CAPABILITIES.map(({ value, label, Icon }, index) => (
+              <Reveal key={label} delay={index * 90}>
+                <GlassCard className="lift h-full p-6 text-center">
+                  <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+                    <Icon className="size-6" aria-hidden="true" />
+                  </div>
+                  <div className="mb-1 text-2xl font-black text-stone-900 sm:text-3xl">
+                    {value}
+                  </div>
+                  <div className="text-sm text-stone-600">{label}</div>
+                </GlassCard>
+              </Reveal>
             ))}
           </div>
         </div>
       </section>
 
       {/* FEATURES */}
-      <section aria-labelledby="features-title" className="bg-stone-50 py-20">
+      <section aria-labelledby="features-title" className="py-20">
         <div className="app-container">
-          <div className="mx-auto mb-16 max-w-3xl text-center">
+          <Reveal className="mx-auto mb-16 max-w-3xl text-center">
             <SectionBadge>FITUR UNGGULAN</SectionBadge>
             <h2
               id="features-title"
@@ -348,32 +359,31 @@ export function LandingPage() {
               Bukan Sekadar Aplikasi Resep
             </h2>
             <p className="text-lg text-stone-600">
-              NutriVillage AI adalah asisten pribadi dapurmu yang paham kondisi kantong dan gizi
-              keluargamu.
+              NutriVillage AI adalah asisten dapur yang paham gizi, anggaran bahan pangan, dan
+              ketersediaan pangan lokal.
             </p>
-          </div>
+          </Reveal>
 
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {FEATURES.map(({ Icon, title, description }) => (
-              <article
-                key={title}
-                className="rounded-card bg-white p-5 shadow-card ring-1 ring-stone-200 ring-inset"
-              >
-                <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-100 to-brand-50 text-brand-700 dark:from-brand-900/60 dark:to-brand-950/40">
-                  <Icon className="size-8" aria-hidden="true" />
-                </div>
-                <h3 className="mb-2 text-lg font-bold text-stone-900">{title}</h3>
-                <p className="text-sm leading-relaxed text-stone-600">{description}</p>
-              </article>
+            {FEATURES.map(({ Icon, title, description }, index) => (
+              <Reveal key={title} delay={(index % 3) * 90}>
+                <GlassCard className="lift h-full p-6">
+                  <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-100 to-brand-50 text-brand-700 dark:from-brand-900/60 dark:to-brand-950/40">
+                    <Icon className="size-7" aria-hidden="true" />
+                  </div>
+                  <h3 className="mb-2 text-lg font-bold text-stone-900">{title}</h3>
+                  <p className="text-sm leading-relaxed text-stone-600">{description}</p>
+                </GlassCard>
+              </Reveal>
             ))}
           </div>
         </div>
       </section>
 
       {/* HOW IT WORKS */}
-      <section aria-labelledby="howto-title" className="bg-white py-20">
+      <section aria-labelledby="howto-title" className="py-20">
         <div className="app-container">
-          <div className="mx-auto mb-16 max-w-3xl text-center">
+          <Reveal className="mx-auto mb-16 max-w-3xl text-center">
             <SectionBadge tone="harvest">CARA KERJA</SectionBadge>
             <h2
               id="howto-title"
@@ -384,33 +394,33 @@ export function LandingPage() {
             <p className="text-lg text-stone-600">
               Dari input data sampai dapat menu bergizi, semudah chat sama teman.
             </p>
-          </div>
+          </Reveal>
 
           <div className="grid gap-8 lg:grid-cols-3">
             {STEPS.map(({ number, title, description, Icon }, index) => (
-              <div key={number} className="relative">
+              <Reveal key={number} delay={index * 120} className="relative h-full">
                 {index < STEPS.length - 1 ? (
                   <div className="absolute top-12 left-full hidden h-0.5 w-full -translate-x-8 bg-gradient-to-r from-brand-200 to-transparent lg:block" />
                 ) : null}
-                <div className="h-full rounded-3xl border border-stone-100 bg-white p-8 shadow-lg transition-all hover:-translate-y-1 hover:shadow-xl">
+                <GlassCard className="lift h-full p-8">
                   <div className="mb-6 flex items-start justify-between">
                     <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 text-white">
                       <Icon className="size-7" aria-hidden="true" />
                     </div>
-                    <div className="text-6xl leading-none font-black text-brand-100 dark:text-brand-900/40">
+                    <div className="text-6xl leading-none font-black text-brand-200/70 dark:text-brand-900/50">
                       {number}
                     </div>
                   </div>
                   <h3 className="mb-3 text-xl font-bold text-stone-900">{title}</h3>
                   <p className="text-sm leading-relaxed text-stone-600">{description}</p>
-                </div>
-              </div>
+                </GlassCard>
+              </Reveal>
             ))}
           </div>
         </div>
       </section>
 
-      {/* WHY CHOOSE US */}
+      {/* WHY + SCORING */}
       <section
         aria-labelledby="why-title"
         className="relative overflow-hidden bg-gradient-to-br from-brand-600 to-brand-800 py-20 text-white"
@@ -424,14 +434,14 @@ export function LandingPage() {
 
         <div className="app-container relative">
           <div className="grid items-center gap-12 lg:grid-cols-2">
-            <div>
+            <Reveal direction="left">
               <SectionBadge tone="harvest">MENGAPA MEMILIH KAMI</SectionBadge>
               <h2 id="why-title" className="mt-6 mb-6 text-3xl font-black sm:text-4xl lg:text-5xl">
-                Dirancang Khusus untuk Keluarga Madiun
+                Dirancang untuk Keluarga &amp; Dapur SPPG
               </h2>
               <p className="mb-8 text-lg text-brand-100">
-                Kami memahami tantangan keluarga Indonesia dalam menyusun menu harian. NutriVillage
-                AI hadir sebagai solusi yang praktis, terjangkau, dan berbasis pangan lokal.
+                Kami memahami tantangan menyusun menu harian maupun menu massal. NutriVillage AI
+                hadir sebagai solusi praktis, terjangkau, dan berbasis pangan lokal.
               </p>
 
               <div className="space-y-4">
@@ -444,105 +454,115 @@ export function LandingPage() {
                   </div>
                 ))}
               </div>
-            </div>
+            </Reveal>
 
-            <div className="rounded-3xl border border-white/20 bg-white/10 p-8 backdrop-blur-lg">
-              <h3 className="mb-6 text-2xl font-bold">Testimoni Pengguna</h3>
-              <div className="space-y-6">
-                {TESTIMONIALS.map((testi) => (
-                  <div
-                    key={testi.name}
-                    className="rounded-2xl border border-white/10 bg-white/10 p-6"
-                  >
-                    <div className="mb-4 flex items-center space-x-3">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-brand-400 to-brand-600 font-bold text-white">
-                        {testi.avatar}
+            <Reveal direction="right" delay={120}>
+              <GlassCard className="border-white/20 bg-white/10 p-8">
+                <h3 className="mb-2 text-2xl font-bold text-white">Cara Skor Dihitung</h3>
+                <p className="mb-6 text-sm text-brand-100">
+                  Bobot default mesin SAW. Peringkat berasal dari mesin rekomendasi, bukan ditebak
+                  di antarmuka.
+                </p>
+                <div className="space-y-4">
+                  {SCORING.map((item) => (
+                    <div key={item.label}>
+                      <div className="mb-1.5 flex items-center justify-between text-sm">
+                        <span className="font-medium text-white">{item.label}</span>
+                        <span className="font-bold text-brand-100">{item.weight}</span>
                       </div>
-                      <div>
-                        <div className="font-semibold">{testi.name}</div>
-                        <div className="text-sm text-brand-200">{testi.role}</div>
+                      <div className="h-2 overflow-hidden rounded-full bg-white/15">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-brand-300 to-harvest-300"
+                          style={{ width: item.weight }}
+                        />
                       </div>
                     </div>
-                    <p className="text-sm leading-relaxed text-brand-50">&quot;{testi.text}&quot;</p>
-                  </div>
-                ))}
-              </div>
-            </div>
+                  ))}
+                </div>
+                <p className="mt-6 rounded-xl border border-white/15 bg-white/10 p-4 text-xs leading-relaxed text-brand-50">
+                  Menu di atas batas anggaran bahan pangan tidak direkomendasikan. Angka estimasi
+                  bersifat indikatif dan mengacu pada data harga yang sumbernya tercatat.
+                </p>
+              </GlassCard>
+            </Reveal>
           </div>
         </div>
       </section>
 
       {/* FAQ */}
-      <section aria-labelledby="faq-title" className="bg-stone-50 py-20">
+      <section aria-labelledby="faq-title" className="py-20">
         <div className="app-container max-w-4xl">
-          <div className="mb-16 text-center">
+          <Reveal className="mb-16 text-center">
             <SectionBadge>FAQ</SectionBadge>
             <h2 id="faq-title" className="mt-6 mb-4 text-4xl font-black text-stone-900 lg:text-5xl">
               Pertanyaan yang Sering Diajukan
             </h2>
             <p className="text-lg text-stone-600">
-              Belum menemukan jawaban? Hubungi kami di halaman kontak.
+              Belum menemukan jawaban? Hubungi kami melalui halaman kontak.
             </p>
-          </div>
+          </Reveal>
 
           <div className="space-y-4">
-            {FAQS.map((faq) => (
-              <details
-                key={faq.question}
-                className="group overflow-hidden rounded-2xl border border-stone-200 bg-white transition-colors hover:border-brand-300"
-              >
-                <summary className="flex cursor-pointer list-none items-center justify-between p-6">
-                  <h3 className="pr-4 font-semibold text-stone-900">{faq.question}</h3>
-                  <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-brand-50 transition-transform duration-300 group-open:rotate-45">
-                    <Plus className="size-4 text-brand-600" aria-hidden="true" />
-                  </span>
-                </summary>
-                <div className="px-6 pb-6 text-sm leading-relaxed text-stone-600">{faq.answer}</div>
-              </details>
+            {FAQS.map((faq, index) => (
+              <Reveal key={faq.question} delay={index * 70}>
+                <details className="glass group overflow-hidden rounded-2xl transition-colors hover:border-brand-300">
+                  <summary className="flex cursor-pointer list-none items-center justify-between p-6">
+                    <h3 className="pr-4 font-semibold text-stone-900">{faq.question}</h3>
+                    <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-brand-50 transition-transform duration-300 group-open:rotate-45">
+                      <Plus className="size-4 text-brand-600" aria-hidden="true" />
+                    </span>
+                  </summary>
+                  <div className="px-6 pb-6 text-sm leading-relaxed text-stone-600">
+                    {faq.answer}
+                  </div>
+                </details>
+              </Reveal>
             ))}
           </div>
         </div>
       </section>
 
       {/* CTA */}
-      <section aria-labelledby="cta-title" className="bg-white py-20">
+      <section aria-labelledby="cta-title" className="py-20">
         <div className="app-container">
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-600 via-brand-700 to-brand-800 p-12 text-center text-white lg:p-16">
-            <div className="absolute inset-0 opacity-10">
-              <div className="absolute top-10 left-10 h-32 w-32 rounded-full border-4 border-white" />
-              <div className="absolute top-20 right-20 h-24 w-24 rounded-full border-4 border-white" />
-              <div className="absolute bottom-10 left-1/4 h-40 w-40 rounded-full border-4 border-white" />
-              <div className="absolute right-1/3 bottom-20 h-20 w-20 rounded-full border-4 border-white" />
-            </div>
-
-            <div className="relative">
-              <h2 id="cta-title" className="mb-6 text-3xl font-black sm:text-4xl lg:text-5xl">
-                Siap Menyusun Menu Keluarga?
-              </h2>
-              <p className="mx-auto mb-8 max-w-2xl text-xl text-brand-100">
-                Buat akun gratis, isi data keluarga, dan dapatkan rekomendasi menu yang sesuai
-                anggaran Anda. Mulai hidup sehat hari ini!
-              </p>
-
-              <div className="flex flex-wrap justify-center gap-4">
-                <ButtonLink intent="harvest" size="lg" href="/login">
-                  Daftar Sekarang - Gratis!
-                </ButtonLink>
-                <GuestLoginButton variant="button" intent="secondary" size="lg">
-                  Pelajari Lebih Lanjut
-                </GuestLoginButton>
+          <Reveal direction="scale">
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-600 via-brand-700 to-brand-800 p-12 text-center text-white lg:p-16">
+              <div className="absolute inset-0 opacity-10">
+                <div className="absolute top-10 left-10 h-32 w-32 rounded-full border-4 border-white" />
+                <div className="absolute top-20 right-20 h-24 w-24 rounded-full border-4 border-white" />
+                <div className="absolute bottom-10 left-1/4 h-40 w-40 rounded-full border-4 border-white" />
+                <div className="absolute right-1/3 bottom-20 h-20 w-20 rounded-full border-4 border-white" />
               </div>
 
-              <div className="mt-8 flex items-center justify-center space-x-6 text-sm text-brand-200">
-                {["100% Gratis", "Tanpa Iklan", "Data Aman"].map((item) => (
-                  <div key={item} className="flex items-center space-x-2">
-                    <Check className="size-5 text-brand-300" aria-hidden="true" />
-                    <span>{item}</span>
-                  </div>
-                ))}
+              <div className="relative">
+                <h2 id="cta-title" className="mb-6 text-3xl font-black sm:text-4xl lg:text-5xl">
+                  Siap Menyusun Menu?
+                </h2>
+                <p className="mx-auto mb-8 max-w-2xl text-xl text-brand-100">
+                  Buat akun gratis, lengkapi data keluarga atau sekolah, lalu dapatkan rekomendasi
+                  menu yang sesuai anggaran bahan pangan Anda.
+                </p>
+
+                <div className="flex flex-wrap justify-center gap-4">
+                  <ButtonLink intent="harvest" size="lg" href="/login">
+                    Daftar Sekarang - Gratis!
+                  </ButtonLink>
+                  <GuestLoginButton variant="button" intent="secondary" size="lg">
+                    Jelajahi Katalog
+                  </GuestLoginButton>
+                </div>
+
+                <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-brand-200">
+                  {["100% Gratis", "Tanpa Iklan", "Data Aman"].map((item) => (
+                    <div key={item} className="flex items-center space-x-2">
+                      <Check className="size-5 text-brand-300" aria-hidden="true" />
+                      <span>{item}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
+          </Reveal>
         </div>
       </section>
 
@@ -562,7 +582,7 @@ export function LandingPage() {
               </div>
               <p className="mb-4 max-w-md text-sm leading-relaxed">
                 Aplikasi rekomendasi menu bergizi berbasis pangan lokal Kabupaten Madiun. Membantu
-                keluarga Indonesia makan sehat tanpa menguras kantong.
+                keluarga dan dapur SPPG menyusun menu sehat tanpa menguras anggaran.
               </p>
               <div className="flex space-x-3">
                 {[
@@ -622,8 +642,9 @@ export function LandingPage() {
 
           <div className="flex flex-col items-center justify-between space-y-4 border-t border-stone-800 pt-8 lg:flex-row lg:space-y-0">
             <p className="text-center text-sm lg:text-left">
-              &copy; 2026 NutriVillage AI. Dikembangkan untuk Kabupaten Madiun. Tugas Praktikum
-              Front-End D3 TI SV UNS.
+              &copy; 2026 NutriVillage AI. Dikembangkan untuk Kabupaten Madiun.{" "}
+              <BookOpen className="inline size-4" aria-hidden="true" /> Tugas Praktikum Front-End D3
+              TI SV UNS.
             </p>
             <div className="flex items-center space-x-2 text-sm">
               <span>Dibuat dengan</span>

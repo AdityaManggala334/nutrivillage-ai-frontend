@@ -30,7 +30,7 @@ export function AdminTable({
   readonly children: ReactNode;
 }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm dark:border-stone-800 dark:bg-stone-900">
+    <div className="glass overflow-hidden rounded-2xl">
       <div className="overflow-x-auto">
         <table className="w-full min-w-[720px] text-left text-sm">
           <thead className="border-b border-stone-200 bg-stone-50 dark:border-stone-800 dark:bg-stone-800/50">
@@ -65,13 +65,14 @@ export function AdminCell({
   );
 }
 
-export type AdminStatus = "pending" | "approved" | "rejected" | "success" | "failed";
+export type AdminStatus = "pending" | "approved" | "rejected" | "success" | "partial" | "failed";
 
 const STATUS_MAP: Record<AdminStatus, { tone: "harvest" | "brand" | "danger"; label: string }> = {
   pending: { tone: "harvest", label: "Pending" },
   approved: { tone: "brand", label: "Disetujui" },
   rejected: { tone: "danger", label: "Ditolak" },
   success: { tone: "brand", label: "Berhasil" },
+  partial: { tone: "harvest", label: "Sebagian" },
   failed: { tone: "danger", label: "Gagal" },
 };
 

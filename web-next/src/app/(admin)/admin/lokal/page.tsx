@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
-import { AdminPageHeader, AdminTable, AdminCell } from "@/components/admin-table";
-import { getLocalCommodities } from "@/server/admin-data";
+import { AdminLocal } from "@/components/admin-local";
+import { AdminPageHeader } from "@/components/admin-table";
+import {
+  listAdminIngredients,
+  listLocalCommodities,
+  listRegionOptions,
+} from "@/server/admin-master";
 
 export const metadata: Metadata = {
   title: "Komoditas Lokal",
@@ -9,23 +14,19 @@ export const metadata: Metadata = {
 
 /** FR-22: pengelolaan data komoditas lokal. */
 export default async function AdminLocalPage() {
-  const commodities = await getLocalCommodities();
+  const [commodities, ingredients, regions] = await Promise.all([
+    listLocalCommodities(),
+    listAdminIngredients(),
+    listRegionOptions(),
+  ]);
 
   return (
     <div>
       <AdminPageHeader
         title="Komoditas Lokal"
-        description="Daftar komoditas lokal yang diprioritaskan dalam rekomendasi."
+        description="Tambah, ubah, dan hapus ketersediaan lokal per bahan dan wilayah."
       />
-      <AdminTable headers={["Komoditas", "Wilayah", "Status Lokal"]}>
-        {commodities.map((item) => (
-          <tr key={item.id}>
-            <AdminCell>{item.name}</AdminCell>
-            <AdminCell>{item.region}</AdminCell>
-            <AdminCell>{item.isLocal ? "Lokal" : "Luar daerah"}</AdminCell>
-          </tr>
-        ))}
-      </AdminTable>
+      <AdminLocal items={commodities} ingredients={ingredients} regions={regions} />
     </div>
   );
 }

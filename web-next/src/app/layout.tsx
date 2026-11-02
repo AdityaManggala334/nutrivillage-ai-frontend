@@ -12,7 +12,9 @@ const plusJakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://nutrivillage-ai.example.com"),
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://nutrivillage-ai-frontend.vercel.app",
+  ),
   title: {
     default: "NutriVillage AI — Menu Bergizi, Hemat, Pangan Lokal",
     template: "%s | NutriVillage AI",

@@ -10,7 +10,7 @@ export interface SectionHeadingProps {
 /** Heading seksi konsisten (RSC). */
 export function SectionHeading({ eyebrow, title, description, action }: SectionHeadingProps) {
   return (
-    <div className="flex flex-wrap items-end justify-between gap-3">
+    <div className="animate-fade-up flex flex-wrap items-end justify-between gap-3">
       <div>
         {eyebrow ? (
           <p className="text-xs font-semibold tracking-wide text-brand-600 uppercase dark:text-brand-400">

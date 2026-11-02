@@ -94,4 +94,5 @@ export const PROTECTED_ROUTES = [
   "/notifications",
   "/onboarding",
   "/admin",
+  "/sppg",
 ] as const;

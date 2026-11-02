@@ -2,9 +2,11 @@
 
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, FieldError, Input, Label, Select } from "@/components/ui";
 import { useProfile, useSaveProfileMutation } from "@/hooks/use-profile";
+import { cn } from "@/lib/utils";
+import { ALLERGY_OPTIONS } from "@/schemas/explore";
 import {
   familyProfileFormSchema,
   type ActivityLevel,
@@ -16,8 +18,9 @@ interface MemberInput {
   age: string;
   gender: Gender;
   weightKg: string;
+  heightCm: string;
   activityLevel: ActivityLevel;
-  allergies: string;
+  allergies: string[];
 }
 
 const emptyMember = (): MemberInput => ({
@@ -25,25 +28,44 @@ const emptyMember = (): MemberInput => ({
   age: "",
   gender: "laki-laki",
   weightKg: "",
+  heightCm: "",
   activityLevel: "sedang",
-  allergies: "",
+  allergies: [],
 });
+
+const toggleItem = (list: readonly string[], value: string): string[] =>
+  list.includes(value) ? list.filter((item) => item !== value) : [...list, value];
 
 const SLIDES = [
   {
     title: "Selamat datang di NutriVillage AI",
     description:
       "Aplikasi ini membantu keluarga menyusun menu harian bergizi dengan mempertimbangkan anggaran dan pangan lokal Madiun.",
+    points: [
+      "Rekomendasi paket makan lengkap: pokok, hewani, nabati, sayur, buah, dan susu.",
+      "Porsi dan kebutuhan gizi dihitung per anggota keluarga.",
+      "Semua saran bisa disesuaikan dengan budget dan pantangan.",
+    ],
   },
   {
     title: "Sesuaikan dengan budget keluarga",
     description:
       "Tentukan anggaran harian Anda. Menu yang melebihi budget otomatis tidak akan direkomendasikan.",
+    points: [
+      "Harga bahan diperbarui dan diverifikasi admin.",
+      "Anda bisa mengubah budget kapan saja di Explore.",
+      "Biaya per porsi ditampilkan transparan.",
+    ],
   },
   {
     title: "Manfaatkan pangan lokal & musiman",
     description:
       "Rekomendasi mengutamakan komoditas lokal yang sedang musim agar lebih hemat dan segar.",
+    points: [
+      "Skor lokal dan musim ikut menentukan pilihan menu.",
+      "Bahan yang sedang musim cenderung lebih hemat.",
+      "Menu tetap menghormati alergi dan pantangan keluarga.",
+    ],
   },
 ] as const;
 
@@ -61,16 +83,19 @@ const mapIssues = (issues: ReadonlyArray<{ path: PropertyKey[]; message: string 
 };
 
 /** FR-04 (onboarding) & FR-05 (input data keluarga). */
-export function OnboardingFlow() {
+export function OnboardingFlow({ editMode = false }: { readonly editMode?: boolean }) {
   const router = useRouter();
   const profileQuery = useProfile();
   const saveMutation = useSaveProfileMutation();
+  const prefilled = useRef(false);
 
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(editMode ? MAX_STEP : 0);
   const [dailyBudget, setDailyBudget] = useState("75000");
   const [region, setRegion] = useState("Kabupaten Madiun");
   const [preferences, setPreferences] = useState("sayur, ikan");
   const [avoidedIngredients, setAvoidedIngredients] = useState("");
+  const [mealsPerDay, setMealsPerDay] = useState("3");
+  const [includeSusu, setIncludeSusu] = useState(true);
   const [members, setMembers] = useState<MemberInput[]>([emptyMember()]);
   const [errors, setErrors] = useState<FormErrors>({});
   const [serverError, setServerError] = useState<string | null>(null);
@@ -78,10 +103,33 @@ export function OnboardingFlow() {
 
   const isOnboarded = profileQuery.data?.onboarded === true;
   useEffect(() => {
-    if (isOnboarded) {
+    if (isOnboarded && !editMode) {
       router.replace("/dashboard");
     }
-  }, [isOnboarded, router]);
+  }, [isOnboarded, editMode, router]);
+
+  useEffect(() => {
+    const profile = profileQuery.data;
+    if (!editMode || prefilled.current || !profile) return;
+    setDailyBudget(String(profile.dailyBudget));
+    setRegion(profile.region);
+    setPreferences(profile.preferences.join(", "));
+    setAvoidedIngredients(profile.avoidedIngredients.join(", "));
+    setMealsPerDay(String(profile.mealsPerDay));
+    setIncludeSusu(profile.includeSusu);
+    setMembers(
+      profile.members.map((member) => ({
+        name: member.name,
+        age: String(member.age),
+        gender: member.gender,
+        weightKg: String(member.weightKg),
+        heightCm: member.heightCm === null ? "" : String(member.heightCm),
+        activityLevel: member.activityLevel,
+        allergies: member.allergies,
+      })),
+    );
+    prefilled.current = true;
+  }, [editMode, profileQuery.data]);
 
   const updateMember = (index: number, patch: Partial<MemberInput>) => {
     setMembers((current) =>
@@ -104,6 +152,8 @@ export function OnboardingFlow() {
       region,
       preferences,
       avoidedIngredients,
+      mealsPerDay,
+      includeSusu,
       members,
     };
 
@@ -120,7 +170,7 @@ export function OnboardingFlow() {
       onSuccess: () => {
         setIsProcessing(true);
         window.setTimeout(() => {
-          router.replace("/dashboard");
+          router.replace(editMode ? "/profile" : "/dashboard");
           router.refresh();
         }, 1600);
       },
@@ -152,23 +202,26 @@ export function OnboardingFlow() {
 
   return (
     <section aria-labelledby="onboarding-title" className="app-container flex justify-center py-14">
-      <div className="w-full max-w-2xl">
+      <div className="w-full max-w-4xl">
         <h1 id="onboarding-title" className="sr-only">
           Onboarding NutriVillage AI
         </h1>
 
+        <p className="mb-2 text-center text-xs font-medium text-stone-500">
+          Langkah {Math.min(step + 1, MAX_STEP)} dari {MAX_STEP}
+        </p>
         <ol className="flex items-center justify-center gap-2" aria-label="Progres onboarding">
           {[0, 1, 2, 3].map((index) => (
             <li
               key={index}
-              className={`h-2 w-10 rounded-full ${index <= step ? "bg-brand-600" : "bg-stone-200"}`}
+              className={`h-2 w-10 rounded-full transition-colors duration-500 ${index <= step ? "bg-brand-600" : "bg-stone-200"}`}
             />
           ))}
         </ol>
 
-        <div className="rounded-card mt-6 bg-white p-6 shadow-card sm:p-8">
+        <div className="glass-strong animate-scale-in mt-6 min-h-[26rem] rounded-3xl p-6 sm:min-h-[30rem] sm:p-10">
           {isForm ? (
-            <form onSubmit={handleSubmit} noValidate>
+            <form onSubmit={handleSubmit} noValidate className="animate-fade-in">
               {serverError ? (
                 <div
                   role="alert"
@@ -230,6 +283,32 @@ export function OnboardingFlow() {
                   />
                   <p className="text-xs text-stone-500">Pisahkan dengan koma.</p>
                 </div>
+                <div className="mb-3 space-y-1.5">
+                  <Label htmlFor="family-meals">Makan per Hari</Label>
+                  <Input
+                    id="family-meals"
+                    type="number"
+                    min={1}
+                    max={5}
+                    value={mealsPerDay}
+                    invalid={Boolean(errors.mealsPerDay)}
+                    onChange={(event) => setMealsPerDay(event.target.value)}
+                  />
+                  <FieldError>{errors.mealsPerDay}</FieldError>
+                </div>
+                <div className="mb-3 space-y-1.5">
+                  <Label htmlFor="family-susu">Sertakan Susu</Label>
+                  <label className="flex items-center gap-2 py-2 text-sm text-stone-700 dark:text-stone-200">
+                    <input
+                      id="family-susu"
+                      type="checkbox"
+                      className="size-4 rounded border-stone-300 accent-brand-600"
+                      checked={includeSusu}
+                      onChange={(event) => setIncludeSusu(event.target.checked)}
+                    />
+                    Ya, sediakan susu dalam paket makan (standar MBG)
+                  </label>
+                </div>
               </div>
 
               <h3 className="mt-8 text-lg">Anggota Keluarga</h3>
@@ -239,7 +318,7 @@ export function OnboardingFlow() {
                 {members.map((member, index) => (
                   <fieldset
                     key={index}
-                    className="rounded-xl border border-stone-200 bg-stone-50/60 p-4 dark:border-stone-800 dark:bg-stone-900/60"
+                    className="glass-subtle rounded-xl border border-white/50 p-4 dark:border-white/10"
                   >
                     <legend className="px-1 text-sm font-semibold text-stone-700">
                       Anggota Keluarga {index + 1}
@@ -299,6 +378,21 @@ export function OnboardingFlow() {
                         <FieldError>{errors[`members.${index}.weightKg`]}</FieldError>
                       </div>
                       <div className="mb-3 space-y-1.5">
+                        <Label htmlFor={`member-${index}-height`}>Tinggi Badan (cm)</Label>
+                        <Input
+                          id={`member-${index}-height`}
+                          type="number"
+                          min={50}
+                          max={250}
+                          step={0.5}
+                          placeholder="Contoh: 165"
+                          value={member.heightCm}
+                          invalid={Boolean(errors[`members.${index}.heightCm`])}
+                          onChange={(event) => updateMember(index, { heightCm: event.target.value })}
+                        />
+                        <FieldError>{errors[`members.${index}.heightCm`]}</FieldError>
+                      </div>
+                      <div className="mb-3 space-y-1.5">
                         <Label htmlFor={`member-${index}-activity`}>Tingkat Aktivitas</Label>
                         <Select
                           id={`member-${index}-activity`}
@@ -314,16 +408,37 @@ export function OnboardingFlow() {
                           <option value="tinggi">Tinggi (aktif berolahraga)</option>
                         </Select>
                       </div>
-                      <div className="mb-3 space-y-1.5">
-                        <Label htmlFor={`member-${index}-allergies`}>Alergi / Pantangan</Label>
-                        <Input
-                          id={`member-${index}-allergies`}
-                          placeholder="Contoh: kacang, seafood"
-                          value={member.allergies}
-                          onChange={(event) => updateMember(index, { allergies: event.target.value })}
-                        />
+                      <div className="mb-3 space-y-1.5 sm:col-span-2">
+                        <span className="text-sm font-medium text-stone-700 dark:text-stone-200">
+                          Alergi / Pantangan
+                        </span>
+                        <div className="flex flex-wrap gap-2">
+                          {ALLERGY_OPTIONS.map((option) => {
+                            const active = member.allergies.includes(option);
+                            return (
+                              <button
+                                key={option}
+                                type="button"
+                                aria-pressed={active}
+                                onClick={() =>
+                                  updateMember(index, {
+                                    allergies: toggleItem(member.allergies, option),
+                                  })
+                                }
+                                className={cn(
+                                  "press rounded-full border px-3 py-1.5 text-xs font-medium transition",
+                                  active
+                                    ? "border-red-400 bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-300"
+                                    : "border-stone-300 text-stone-600 hover:bg-stone-100 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800",
+                                )}
+                              >
+                                {option}
+                              </button>
+                            );
+                          })}
+                        </div>
                         <p className="text-xs text-stone-500">
-                          Pisahkan dengan koma. Kosongkan bila tidak ada.
+                          Pilih bahan yang menjadi alergi/pantangan. Kosongkan bila tidak ada.
                         </p>
                       </div>
                     </div>
@@ -358,17 +473,24 @@ export function OnboardingFlow() {
             </form>
           ) : (
             <>
-              <div className="text-center">
+              <div className="flex flex-1 flex-col justify-center text-center">
                 <div
                   className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-100 text-2xl font-bold text-brand-700"
                   aria-hidden="true"
                 >
                   {step + 1}
                 </div>
-                <h2 className="mt-6 text-2xl">{slide.title}</h2>
-                <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-stone-600">
+                <h2 className="mt-6 text-2xl sm:text-3xl">{slide.title}</h2>
+                <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-stone-600 sm:text-base dark:text-stone-300">
                   {slide.description}
                 </p>
+                <ul className="mx-auto mt-6 grid max-w-2xl gap-2 text-left text-sm text-stone-700 sm:grid-cols-3 dark:text-stone-300">
+                  {slide.points.map((point) => (
+                    <li key={point} className="rounded-xl bg-white/60 p-3 dark:bg-stone-900/40">
+                      {point}
+                    </li>
+                  ))}
+                </ul>
               </div>
               <div className="mt-8 flex items-center justify-between gap-3">
                 <Button

@@ -9,6 +9,7 @@ export {
   CardContent,
   CardFooter,
 } from "./card";
+export { GlassCard, type GlassCardProps } from "./glass-card";
 export { Input, Textarea, Select, Label, FieldError } from "./input";
 export { Skeleton, RecipeCardSkeleton } from "./skeleton";
 export {

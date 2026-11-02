@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import { AdminPageHeader, AdminTable, AdminCell } from "@/components/admin-table";
-import { getSeasons } from "@/server/admin-data";
+import { AdminSeasons } from "@/components/admin-seasons";
+import { AdminPageHeader } from "@/components/admin-table";
+import { listAdminIngredients, listSeasons } from "@/server/admin-master";
 
 export const metadata: Metadata = {
   title: "Kelola Musim",
@@ -9,22 +10,18 @@ export const metadata: Metadata = {
 
 /** FR-22: pengelolaan data musim komoditas. */
 export default async function AdminSeasonsPage() {
-  const seasons = await getSeasons();
+  const [seasons, ingredients] = await Promise.all([
+    listSeasons(),
+    listAdminIngredients(),
+  ]);
 
   return (
     <div>
       <AdminPageHeader
         title="Musim Komoditas"
-        description="Data musim dipakai sebagai salah satu bobot penilaian rekomendasi."
+        description="Tambah, ubah, dan hapus data musim. Data ini menjadi salah satu bobot penilaian rekomendasi."
       />
-      <AdminTable headers={["Komoditas", "Bulan Musim"]}>
-        {seasons.map((season) => (
-          <tr key={season.id}>
-            <AdminCell>{season.commodity}</AdminCell>
-            <AdminCell>{season.months.join(", ")}</AdminCell>
-          </tr>
-        ))}
-      </AdminTable>
+      <AdminSeasons items={seasons} ingredients={ingredients} />
     </div>
   );
 }

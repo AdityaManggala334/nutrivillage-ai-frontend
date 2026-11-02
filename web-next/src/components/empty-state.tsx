@@ -10,7 +10,7 @@ export interface EmptyStateProps {
 /** Empty state reusable (Modul 7: penanganan status async kosong). */
 export function EmptyState({ title, description, action }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-stone-300 bg-white/60 px-6 py-14 text-center dark:border-stone-700 dark:bg-stone-900/60">
+    <div className="glass-subtle flex flex-col items-center justify-center rounded-2xl px-6 py-14 text-center">
       <span className="mb-3 flex size-12 items-center justify-center rounded-full bg-brand-50 text-brand-600 dark:bg-brand-950 dark:text-brand-300">
         <Inbox className="size-6" aria-hidden="true" />
       </span>

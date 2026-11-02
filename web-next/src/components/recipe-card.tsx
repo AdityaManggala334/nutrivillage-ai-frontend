@@ -23,6 +23,7 @@ export function RecipeCard({ recipe, scores, rank, children }: RecipeCardProps) 
       <div className="relative">
         <RecipeImage
           imageKey={recipe.imageKey}
+          imageUrl={recipe.imageUrl}
           alt={recipe.imageAlt}
           className="h-36 w-full"
           priority={rank === 1}

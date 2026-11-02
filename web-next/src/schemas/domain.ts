@@ -58,6 +58,8 @@ export const RecipeSchema = z.object({
   nutrition: NutritionInfoSchema,
   estimatedCost: z.number().nonnegative(),
   imageAlt: z.string().min(1),
+  /** URL foto asli (ImageKit). Null = pakai placeholder gradien. */
+  imageUrl: z.string().nullable().optional(),
   /** Kunci palet gradien untuk placeholder foto (tanpa aset eksternal). */
   imageKey: z.string().min(1),
   isLocal: z.boolean(),
@@ -78,7 +80,7 @@ export type Recipe = z.infer<typeof RecipeSchema>;
 /** Ringkasan resep (dipakai untuk kartu/list agar tidak membawa seluruh data). */
 export type RecipeSummary = Pick<
   Recipe,
-  "id" | "name" | "category" | "estimatedCost" | "imageKey" | "imageAlt"
+  "id" | "name" | "category" | "estimatedCost" | "imageKey" | "imageAlt" | "imageUrl"
 >;
 
 /** Draf resep tanpa id & biaya (biaya dihitung otomatis dari bahan). */

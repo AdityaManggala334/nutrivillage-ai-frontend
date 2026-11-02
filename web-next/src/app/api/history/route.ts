@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { HistoryFilterSchema } from "@/schemas/domain";
+import { getUserIdFromRequest } from "@/server/auth";
 import { listHistory, saveHistoryEntry } from "@/server/data";
 import { jsonError, parseJsonBody } from "@/server/http";
 
@@ -12,11 +13,11 @@ const SaveHistoryBodySchema = z.object({
   note: z.string(),
 });
 
-/** GET /api/history?filter=all|favorite|month — FR-13. */
+/** GET /api/history?filter=all|favorite|month — FR-13 (per pengguna). */
 export async function GET(request: Request): Promise<NextResponse> {
   const { searchParams } = new URL(request.url);
   const filter = HistoryFilterSchema.catch("all").parse(searchParams.get("filter"));
-  const entries = await listHistory(filter);
+  const entries = await listHistory(getUserIdFromRequest(request), filter);
   return NextResponse.json(entries);
 }
 
@@ -26,7 +27,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   if (!parsed.ok) return parsed.response;
 
   try {
-    const entry = await saveHistoryEntry(parsed.data);
+    const entry = await saveHistoryEntry(getUserIdFromRequest(request), parsed.data);
     return NextResponse.json(entry, { status: 201 });
   } catch (error) {
     return jsonError(

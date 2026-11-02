@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { ExploreFormSchema } from "@/schemas/explore";
 import { getSessionToken, getUserByToken } from "@/server/auth";
-import { generateRecommendations } from "@/server/data";
+import { buildMealPlan } from "@/server/meal-plan";
 import { parseJsonBody } from "@/server/http";
 import { consumeGenerateQuota } from "@/server/rate-limit";
 
@@ -35,7 +35,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     );
   }
 
-  const recommendations = await generateRecommendations(parsed.data);
+  const recommendations = await buildMealPlan(parsed.data);
   return NextResponse.json(recommendations, {
     headers: {
       "X-RateLimit-Limit": String(quota.limit),

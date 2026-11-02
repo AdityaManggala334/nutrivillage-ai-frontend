@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 interface ImageTheme {
@@ -21,6 +22,7 @@ const FALLBACK: ImageTheme = { from: "from-stone-300", to: "to-stone-600", emoji
 
 export interface RecipeImageProps {
   readonly imageKey: string;
+  readonly imageUrl?: string | null;
   readonly alt: string;
   readonly className?: string;
   readonly priority?: boolean;
@@ -30,8 +32,22 @@ export interface RecipeImageProps {
  * Placeholder foto menu berbasis gradien (tanpa aset eksternal, LCP cepat).
  * RSC: tidak ada interaktivitas, tetap di server.
  */
-export function RecipeImage({ imageKey, alt, className, priority = false }: RecipeImageProps) {
+export function RecipeImage({
+  imageKey,
+  imageUrl,
+  alt,
+  className,
+  priority = false,
+}: RecipeImageProps) {
   const theme = IMAGE_THEMES[imageKey] ?? FALLBACK;
+
+  if (imageUrl) {
+    return (
+      <div className={cn("relative overflow-hidden", className)}>
+        <Image src={imageUrl} alt={alt} fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" priority={priority} />
+      </div>
+    );
+  }
 
   return (
     <div
