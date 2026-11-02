@@ -47,28 +47,59 @@ interface BackendAuthSession {
   readonly token: string;
 }
 
+const RETRYABLE_STATUS = new Set([502, 503, 504]);
+// Cukup 1 percobaan ulang dengan jeda pendek — retry panjang justru membuat
+// navigasi terasa lambat saat backend free tier sedang bangun (cold start).
+const FETCH_ATTEMPTS = 2;
+const RETRY_BASE_DELAY_MS = 800;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * fetch dengan retry singkat. Backend free tier (Render) bisa "bangun" dari
+ * tidur (cold start) yang tampak sebagai error koneksi / 502-504.
+ */
+async function fetchWithRetry(url: string, init: RequestInit): Promise<Response> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= FETCH_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await fetch(url, init);
+      if (!RETRYABLE_STATUS.has(response.status) || attempt === FETCH_ATTEMPTS) {
+        return response;
+      }
+    } catch (error) {
+      lastError = error;
+      if (attempt === FETCH_ATTEMPTS) throw error;
+    }
+    await sleep(RETRY_BASE_DELAY_MS * attempt);
+  }
+  throw lastError instanceof Error ? lastError : new Error("Gagal menghubungi backend");
+}
+
 async function backendFetch<T>(
   path: string,
   init: RequestInit = {},
   token?: string,
 ): Promise<T> {
-  const isForm = typeof FormData !== "undefined" && init.body instanceof FormData;
   const headers: Record<string, string> = {
     Accept: "application/json",
-    ...(init.body && !isForm ? { "Content-Type": "application/json" } : {}),
+    ...(init.body ? { "Content-Type": "application/json" } : {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 
   let response: Response;
   try {
-    response = await fetch(`${API_BASE_URL}${API_PREFIX}${path}`, {
+    response = await fetchWithRetry(`${API_BASE_URL}${API_PREFIX}${path}`, {
       ...init,
       headers,
       cache: "no-store",
     });
   } catch {
     throw new BackendError(
-      "Tidak dapat terhubung ke server backend. Pastikan FastAPI berjalan.",
+      "Server backend sedang tidak dapat dihubungi (mungkin baru menyala). " +
+        "Tunggu sebentar lalu coba lagi.",
       503,
     );
   }
@@ -130,6 +161,8 @@ export interface BackendRegisterInput {
   readonly email: string;
   readonly password: string;
   readonly role: "user" | "petugas_sppg";
+  /** Nomor HP opsional (10-15 digit). */
+  readonly phone?: string;
   readonly nip?: string;
   readonly sppgUnit?: string;
   readonly region?: string;
@@ -147,6 +180,7 @@ export async function backendRegister(
       password: input.password,
       confirm_password: input.password,
       role: input.role,
+      phone: input.phone,
       nip: input.nip,
       sppg_unit: input.sppgUnit,
       region: input.region,
@@ -366,95 +400,533 @@ export async function backendUpdateUser(
   );
 }
 
+/* ------------------------------------------------------------------ */
+/* Data master admin (bahan, nutrisi, menu, musim, komoditas lokal)    */
+/* ------------------------------------------------------------------ */
+
+export type AdminMasterResource =
+  | "ingredients"
+  | "nutrition"
+  | "recipes"
+  | "seasons"
+  | "local"
+  | "regions"
+  | "prices"
+  | "food-safety"
+  | "articles";
+
+export async function backendAdminList(
+  token: string,
+  resource: AdminMasterResource,
+): Promise<unknown[]> {
+  return backendFetch<unknown[]>(`/admin/${resource}`, { method: "GET" }, token);
+}
+
+export async function backendAdminCreate(
+  token: string,
+  resource: AdminMasterResource,
+  body: unknown,
+): Promise<unknown> {
+  return backendFetch<unknown>(
+    `/admin/${resource}`,
+    { method: "POST", body: JSON.stringify(body) },
+    token,
+  );
+}
+
+export async function backendAdminUpdate(
+  token: string,
+  resource: AdminMasterResource,
+  id: number | string,
+  body: unknown,
+): Promise<unknown> {
+  return backendFetch<unknown>(
+    `/admin/${resource}/${id}`,
+    { method: "PATCH", body: JSON.stringify(body) },
+    token,
+  );
+}
+
+export async function backendAdminReplace(
+  token: string,
+  resource: AdminMasterResource,
+  id: number | string,
+  body: unknown,
+): Promise<unknown> {
+  return backendFetch<unknown>(
+    `/admin/${resource}/${id}`,
+    { method: "PUT", body: JSON.stringify(body) },
+    token,
+  );
+}
+
+export async function backendAdminDelete(
+  token: string,
+  resource: AdminMasterResource,
+  id: number | string,
+): Promise<void> {
+  await backendFetch<undefined>(`/admin/${resource}/${id}`, { method: "DELETE" }, token);
+}
 
 /* ------------------------------------------------------------------ */
-/* Dasbor admin: bahan + gizi + harga (v2.2)                           */
+/* Profil keluarga (FR-02)                                             */
 /* ------------------------------------------------------------------ */
 
-export interface BackendNutritionFact {
+export interface BackendFamilyMember {
+  readonly id: number;
+  readonly name: string | null;
+  readonly age: number;
+  readonly age_group: string | null;
+  readonly gender: string | null;
+  readonly weight_kg: number;
+  readonly height_cm: number | null;
+  readonly activity_level: string;
+  readonly allergies: string[];
+}
+
+export interface BackendFamilyProfile {
+  readonly user_id: number;
+  readonly daily_budget: number;
+  readonly region: string;
+  readonly preferences: string[];
+  readonly avoided_ingredients: string[];
+  readonly meals_per_day: number;
+  readonly include_susu: boolean;
+  readonly onboarded: boolean;
+  readonly family_count: number;
+  readonly members: BackendFamilyMember[];
+  readonly updated_at: string;
+}
+
+export interface BackendFamilyProfileInput {
+  readonly daily_budget: number;
+  readonly region: string;
+  readonly preferences: string[];
+  readonly avoided_ingredients: string[];
+  readonly meals_per_day: number;
+  readonly include_susu: boolean;
+  readonly onboarded: boolean;
+  readonly members: Array<{
+    readonly name: string | null;
+    readonly age: number;
+    readonly age_group: string;
+    readonly gender: string | null;
+    readonly weight_kg: number;
+    readonly height_cm: number;
+    readonly activity_level: string;
+    readonly allergies: string[];
+  }>;
+}
+
+export async function backendGetProfile(
+  token: string,
+): Promise<BackendFamilyProfile | null> {
+  return backendFetch<BackendFamilyProfile | null>("/profile", { method: "GET" }, token);
+}
+
+export async function backendSaveProfile(
+  token: string,
+  input: BackendFamilyProfileInput,
+): Promise<BackendFamilyProfile> {
+  return backendFetch<BackendFamilyProfile>(
+    "/profile",
+    { method: "PUT", body: JSON.stringify(input) },
+    token,
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Katalog resep publik (FR-10)                                        */
+/* ------------------------------------------------------------------ */
+
+export interface BackendRecipeIngredient {
+  readonly id: number;
+  readonly ingredient_id: number | null;
+  readonly name: string;
+  readonly quantity: number;
+  readonly unit: string;
+  readonly estimated_price: number;
+  readonly is_pantry: boolean;
+  readonly note?: string | null;
+}
+
+export interface BackendRecipeNutrition {
   readonly calories: number;
   readonly protein: number;
-  readonly carbs: number;
+  readonly carbohydrates: number;
   readonly fat: number;
   readonly fiber: number;
-  readonly bdd_percent: number;
-  readonly calcium_mg: number;
-  readonly iron_mg: number;
-  readonly vitamin_a_mcg: number;
-  readonly vitamin_c_mg: number;
-  readonly sugar_g: number;
-  readonly sodium_mg: number;
-  readonly details: Record<string, unknown>;
-  readonly source: string;
 }
 
-export interface BackendNutritionGridRow {
-  readonly ingredient_id: number;
-  readonly code: string | null;
+export interface BackendRecipe {
+  readonly id: number;
   readonly name: string;
   readonly category: string;
-  readonly unit: string;
-  readonly mbg_slot: string | null;
-  readonly allergens: string[];
+  readonly description: string | null;
+  readonly servings: number;
+  readonly cooking_time_min: number;
+  readonly steps: string[];
+  readonly tags: string[];
+  readonly image_url: string | null;
+  readonly image_file_id: string | null;
+  readonly image_key: string | null;
+  readonly image_alt: string | null;
+  readonly food_safety: Array<{ readonly id: number; readonly topic: string; readonly verification: string }>;
   readonly is_local: boolean;
-  readonly used_in_menus: number;
-  readonly price_per_kg: number | null;
-  readonly price_source: string | null;
-  readonly price_status: string | null;
-  readonly nutrition: BackendNutritionFact | null;
+  readonly in_season: boolean;
+  readonly is_vegetarian: boolean;
+  readonly estimated_cost: number;
+  readonly price_updated_at: string | null;
+  readonly nutrition: BackendRecipeNutrition | null;
+  readonly ingredients: BackendRecipeIngredient[];
 }
 
-export interface BackendNutritionUpdate {
+export async function backendListRecipes(): Promise<BackendRecipe[]> {
+  return backendFetch<BackendRecipe[]>("/recipes", { method: "GET" });
+}
+
+export async function backendGetRecipe(id: number | string): Promise<BackendRecipe> {
+  return backendFetch<BackendRecipe>(`/recipes/${id}`, { method: "GET" });
+}
+
+/* ------------------------------------------------------------------ */
+/* Riwayat & favorit (FR-04)                                           */
+/* ------------------------------------------------------------------ */
+
+export interface BackendHistoryEntry {
+  readonly id: number;
+  readonly kind: string;
+  readonly note: string;
+  readonly saved_at: string;
+  readonly favorite: boolean;
+  readonly recipe: BackendRecipe | null;
+}
+
+export async function backendListHistory(
+  token: string,
+  filter: string,
+): Promise<BackendHistoryEntry[]> {
+  return backendFetch<BackendHistoryEntry[]>(
+    `/history?filter=${encodeURIComponent(filter)}`,
+    { method: "GET" },
+    token,
+  );
+}
+
+export async function backendSaveHistory(
+  token: string,
+  input: { readonly recipe_id: number; readonly kind: string; readonly note: string },
+): Promise<BackendHistoryEntry> {
+  return backendFetch<BackendHistoryEntry>(
+    "/history",
+    { method: "POST", body: JSON.stringify(input) },
+    token,
+  );
+}
+
+export async function backendDeleteHistory(token: string, id: number | string): Promise<void> {
+  await backendFetch<undefined>(`/history/${id}`, { method: "DELETE" }, token);
+}
+
+export async function backendSetHistoryFavorite(
+  token: string,
+  id: number | string,
+  favorite: boolean,
+): Promise<BackendHistoryEntry> {
+  return backendFetch<BackendHistoryEntry>(
+    `/history/${id}`,
+    { method: "PATCH", body: JSON.stringify({ favorite }) },
+    token,
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Harga pangan, scraper & statistik admin                             */
+/* ------------------------------------------------------------------ */
+
+export interface BackendPrice {
+  readonly id: number;
+  readonly ingredient_id: number;
+  readonly ingredient_name: string;
+  readonly region_id: number | null;
+  readonly price: number;
+  readonly unit: string;
+  readonly recorded_date: string;
+  readonly source_type: string;
+  readonly source: string;
+  readonly status: string;
+  readonly created_at: string;
+}
+
+export async function backendListPrices(token: string): Promise<BackendPrice[]> {
+  return backendFetch<BackendPrice[]>("/admin/prices", { method: "GET" }, token);
+}
+
+export async function backendVerifyPrice(
+  token: string,
+  priceId: number,
+  status: string,
+  note?: string,
+): Promise<BackendPrice> {
+  return backendFetch<BackendPrice>(
+    `/admin/prices/${priceId}/verify`,
+    { method: "POST", body: JSON.stringify({ status, note: note ?? null }) },
+    token,
+  );
+}
+
+export interface BackendScraperRun {
+  readonly id: number;
+  readonly source: string;
+  readonly scheduled_at: string | null;
+  readonly started_at: string | null;
+  readonly finished_at: string | null;
+  readonly status: string;
+  readonly items_count: number;
+  readonly error_message: string | null;
+}
+
+export async function backendListScraperRuns(token: string): Promise<BackendScraperRun[]> {
+  return backendFetch<BackendScraperRun[]>("/admin/scraper-runs", { method: "GET" }, token);
+}
+
+export interface BackendAdminStats {
+  readonly ingredients: number;
+  readonly recipes: number;
+  readonly pending_prices: number;
+  readonly approved_prices: number;
+  readonly users: number;
+  readonly scraper_failures: number;
+}
+
+export async function backendAdminStats(token: string): Promise<BackendAdminStats> {
+  return backendFetch<BackendAdminStats>("/admin/stats", { method: "GET" }, token);
+}
+
+/* ------------------------------------------------------------------ */
+/* Keamanan pangan & artikel & notifikasi                              */
+/* ------------------------------------------------------------------ */
+
+export interface BackendFoodSafety {
+  readonly id: number;
+  readonly code: string | null;
+  readonly topic: string;
+  readonly risk_type: string;
+  readonly hazard: string;
+  readonly handling: string;
+  readonly source: string;
+  readonly verification: string;
+}
+
+/** Publik: hanya entri yang sudah diverifikasi admin. */
+export async function backendListVerifiedFoodSafety(): Promise<BackendFoodSafety[]> {
+  return backendFetch<BackendFoodSafety[]>("/food-safety", { method: "GET" });
+}
+
+export interface BackendArticle {
+  readonly id: number;
+  readonly code: string | null;
+  readonly title: string;
+  readonly excerpt: string;
+  readonly category: string;
+  readonly read_minutes: number;
+  readonly body: string[];
+  readonly created_at: string;
+}
+
+export async function backendListArticles(): Promise<BackendArticle[]> {
+  return backendFetch<BackendArticle[]>("/articles", { method: "GET" });
+}
+
+export async function backendGetArticle(
+  id: number | string,
+): Promise<BackendArticle | null> {
+  try {
+    return await backendFetch<BackendArticle>(`/articles/${id}`, { method: "GET" });
+  } catch (error) {
+    // 404 = artikel tidak ada; biarkan pemanggil memanggil notFound().
+    if (error instanceof BackendError && error.status === 404) return null;
+    throw error;
+  }
+}
+
+export interface BackendNotification {
+  readonly id: number;
+  readonly user_id: number | null;
+  readonly title: string;
+  readonly message: string;
+  readonly kind: string;
+  readonly read: boolean;
+  readonly created_at: string;
+}
+
+/**
+ * Daftar notifikasi. Token bersifat opsional: tanpa sesi backend tetap
+ * menerima notifikasi global.
+ */
+export async function backendListNotifications(
+  token?: string,
+): Promise<BackendNotification[]> {
+  return backendFetch<BackendNotification[]>(
+    "/notifications",
+    { method: "GET" },
+    token || undefined,
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Akun halaman Profil (FR-02)                                         */
+/* ------------------------------------------------------------------ */
+
+export interface BackendAccount {
+  readonly id: number;
+  readonly name: string;
+  readonly email: string;
+  readonly phone: string | null;
+  readonly role: string;
+  readonly created_at: string;
+  readonly notifications_enabled: boolean;
+}
+
+export async function backendGetAccount(token: string): Promise<BackendAccount> {
+  return backendFetch<BackendAccount>("/account", { method: "GET" }, token);
+}
+
+export interface BackendAccountInput {
   readonly name?: string;
-  readonly category?: string;
-  readonly unit?: string;
-  readonly mbg_slot?: string | null;
-  readonly allergens?: string[];
-  readonly nutrition?: Partial<BackendNutritionFact>;
-  readonly price_per_kg?: number | null;
+  readonly phone?: string | null;
+  readonly notifications_enabled?: boolean;
 }
 
-export async function backendNutritionGrid(
+export async function backendUpdateAccount(
   token: string,
-): Promise<BackendNutritionGridRow[]> {
-  return backendFetch<BackendNutritionGridRow[]>("/admin/nutrition-grid", { method: "GET" }, token);
-}
-
-export async function backendUpdateNutrition(
-  token: string,
-  ingredientId: number,
-  input: BackendNutritionUpdate,
-): Promise<BackendNutritionGridRow> {
-  return backendFetch<BackendNutritionGridRow>(
-    `/admin/nutrition-grid/${ingredientId}`,
+  input: BackendAccountInput,
+): Promise<BackendAccount> {
+  return backendFetch<BackendAccount>(
+    "/account",
     { method: "PATCH", body: JSON.stringify(input) },
     token,
   );
 }
 
-export interface BackendImportReport {
-  readonly dibuat: Record<string, number>;
-  readonly diperbarui: Record<string, number>;
-  readonly jumlah_error: number;
-  readonly error: ReadonlyArray<{
-    readonly berkas: string;
-    readonly baris: number;
-    readonly kolom: string;
-    readonly pesan: string;
-  }>;
-  readonly jumlah_menu?: number;
-  readonly jumlah_bahan?: number;
-  readonly dry_run?: boolean;
-  readonly catatan?: string;
+export async function backendChangePassword(
+  token: string,
+  input: {
+    readonly current_password: string;
+    readonly new_password: string;
+    readonly confirm_password: string;
+  },
+): Promise<void> {
+  await backendFetch<undefined>(
+    "/account/password",
+    { method: "PUT", body: JSON.stringify(input) },
+    token,
+  );
 }
 
-export async function backendImportDataset(
+/* ------------------------------------------------------------------ */
+/* Meal planner & daftar belanja (FR-15 s.d. FR-17, FR-26 s.d. FR-29) */
+/* ------------------------------------------------------------------ */
+
+export interface BackendMealPlanEntry {
+  readonly id: number;
+  readonly week_id: string;
+  readonly day: string;
+  readonly slot: string;
+  readonly note: string;
+  readonly recipe: BackendRecipe | null;
+}
+
+export async function backendListMealPlans(
   token: string,
-  form: FormData,
-): Promise<BackendImportReport> {
-  return backendFetch<BackendImportReport>(
-    "/admin/import",
-    { method: "POST", body: form },
+  weekId: string,
+): Promise<BackendMealPlanEntry[]> {
+  return backendFetch<BackendMealPlanEntry[]>(
+    `/meal-plans?week_id=${encodeURIComponent(weekId)}`,
+    { method: "GET" },
+    token,
+  );
+}
+
+export async function backendAssignMealPlan(
+  token: string,
+  input: {
+    readonly week_id: string;
+    readonly day: string;
+    readonly slot: string;
+    readonly recipe_id: number;
+    readonly note: string;
+  },
+): Promise<BackendMealPlanEntry> {
+  return backendFetch<BackendMealPlanEntry>(
+    "/meal-plans",
+    { method: "POST", body: JSON.stringify(input) },
+    token,
+  );
+}
+
+export async function backendRemoveMealPlan(
+  token: string,
+  entryId: number | string,
+): Promise<{ readonly entry_id: number }> {
+  return backendFetch<{ entry_id: number }>(
+    `/meal-plans?entry_id=${encodeURIComponent(String(entryId))}`,
+    { method: "DELETE" },
+    token,
+  );
+}
+
+export interface BackendShoppingItem {
+  readonly id: number;
+  readonly name: string;
+  readonly quantity: number;
+  readonly unit: string;
+  readonly estimated_price: number;
+  readonly checked: boolean;
+}
+
+export interface BackendShoppingList {
+  readonly id: number;
+  readonly title: string;
+  readonly note: string | null;
+  readonly total_estimated_cost: number;
+  readonly generated_at: string;
+  readonly items: readonly BackendShoppingItem[];
+}
+
+export async function backendGetShoppingList(token: string): Promise<BackendShoppingList> {
+  return backendFetch<BackendShoppingList>("/shopping-list", { method: "GET" }, token);
+}
+
+export async function backendGenerateShoppingList(
+  token: string,
+  input: { readonly week_id?: string; readonly recipe_id?: number },
+): Promise<BackendShoppingList> {
+  return backendFetch<BackendShoppingList>(
+    "/shopping-list",
+    { method: "POST", body: JSON.stringify(input) },
+    token,
+  );
+}
+
+export async function backendPatchShoppingList(
+  token: string,
+  input: { readonly item_id?: number; readonly checked?: boolean; readonly note?: string },
+): Promise<BackendShoppingList> {
+  return backendFetch<BackendShoppingList>(
+    "/shopping-list",
+    { method: "PATCH", body: JSON.stringify(input) },
+    token,
+  );
+}
+
+export async function backendDeleteShoppingItem(
+  token: string,
+  itemId: number | string,
+): Promise<BackendShoppingList> {
+  return backendFetch<BackendShoppingList>(
+    `/shopping-list?item_id=${encodeURIComponent(String(itemId))}`,
+    { method: "DELETE" },
     token,
   );
 }
@@ -639,519 +1111,3 @@ export async function backendSppgRecommendation(
   });
 }
 
-/* ------------------------------------------------------------------ */
-/* Harga pangan admin (FR-23) — sumber data: tabel prices              */
-/* ------------------------------------------------------------------ */
-
-export interface BackendPrice {
-  readonly id: number;
-  readonly ingredient_id: number;
-  readonly ingredient_name: string;
-  readonly region_id: number | null;
-  readonly price: number;
-  readonly unit: string;
-  readonly recorded_date: string;
-  readonly source_type: string;
-  readonly source: string;
-  readonly status: "pending" | "approved" | "rejected";
-  readonly created_at: string;
-}
-
-export interface BackendPriceCreate {
-  readonly ingredient_id: number;
-  readonly price: number;
-  readonly unit: string;
-  readonly source: string;
-  readonly status: "pending" | "approved" | "rejected";
-}
-
-export interface BackendPriceUpdate {
-  readonly price?: number;
-  readonly unit?: string;
-  readonly source?: string;
-}
-
-export interface BackendIngredientOption {
-  readonly id: number;
-  readonly name: string;
-  readonly unit: string;
-}
-
-export async function backendPrices(token: string): Promise<BackendPrice[]> {
-  return backendFetch<BackendPrice[]>("/admin/prices", { method: "GET" }, token);
-}
-
-export async function backendPriceIngredients(
-  token: string,
-): Promise<BackendIngredientOption[]> {
-  const rows = await backendFetch<ReadonlyArray<{ id: number; name: string; unit: string }>>(
-    "/admin/ingredients",
-    { method: "GET" },
-    token,
-  );
-  return rows.map((row) => ({ id: row.id, name: row.name, unit: row.unit }));
-}
-
-export async function backendCreatePrice(
-  token: string,
-  input: BackendPriceCreate,
-): Promise<BackendPrice> {
-  return backendFetch<BackendPrice>(
-    "/admin/prices",
-    { method: "POST", body: JSON.stringify(input) },
-    token,
-  );
-}
-
-export async function backendUpdatePrice(
-  token: string,
-  priceId: number,
-  input: BackendPriceUpdate,
-): Promise<BackendPrice> {
-  return backendFetch<BackendPrice>(
-    `/admin/prices/${priceId}`,
-    { method: "PATCH", body: JSON.stringify(input) },
-    token,
-  );
-}
-
-export async function backendVerifyPrice(
-  token: string,
-  priceId: number,
-  status: "approved" | "rejected",
-): Promise<BackendPrice> {
-  return backendFetch<BackendPrice>(
-    `/admin/prices/${priceId}/verify`,
-    { method: "POST", body: JSON.stringify({ status }) },
-    token,
-  );
-}
-
-export async function backendDeletePrice(token: string, priceId: number): Promise<void> {
-  await backendFetch<void>(`/admin/prices/${priceId}`, { method: "DELETE" }, token);
-}
-
-/* ------------------------------------------------------------------ */
-/* Profil keluarga (FR-05) — sumber data: tabel family_profiles       */
-/* ------------------------------------------------------------------ */
-
-export interface BackendFamilyMember {
-  readonly id: number;
-  readonly name: string | null;
-  readonly age: number;
-  readonly age_group: string | null;
-  readonly gender: string | null;
-  readonly weight_kg: number;
-  readonly height_cm: number | null;
-  readonly activity_level: string;
-  readonly allergies: string[];
-}
-
-export interface BackendFamilyProfile {
-  readonly user_id: number;
-  readonly daily_budget: number;
-  readonly region: string;
-  readonly preferences: string[];
-  readonly avoided_ingredients: string[];
-  readonly meals_per_day: number;
-  readonly include_susu: boolean;
-  readonly onboarded: boolean;
-  readonly family_count: number;
-  readonly members: BackendFamilyMember[];
-  readonly updated_at: string;
-}
-
-export interface BackendFamilyProfileInput {
-  readonly daily_budget: number;
-  readonly region: string;
-  readonly preferences: string[];
-  readonly avoided_ingredients: string[];
-  readonly meals_per_day: number;
-  readonly include_susu: boolean;
-  readonly onboarded: boolean;
-  readonly members: ReadonlyArray<{
-    readonly name: string;
-    readonly age: number;
-    readonly age_group: string;
-    readonly gender: string;
-    readonly weight_kg: number;
-    readonly height_cm: number;
-    readonly activity_level: string;
-    readonly allergies: string[];
-  }>;
-}
-
-export async function backendGetProfile(
-  token: string,
-): Promise<BackendFamilyProfile | null> {
-  return backendFetch<BackendFamilyProfile | null>("/profile", { method: "GET" }, token);
-}
-
-export async function backendSaveProfile(
-  token: string,
-  input: BackendFamilyProfileInput,
-): Promise<BackendFamilyProfile> {
-  return backendFetch<BackendFamilyProfile>(
-    "/profile",
-    { method: "PUT", body: JSON.stringify(input) },
-    token,
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Data master admin (FR-22/FR-30) — semua dari tabel database        */
-/* ------------------------------------------------------------------ */
-
-export interface BackendIngredientRow {
-  readonly id: number;
-  readonly name: string;
-  readonly category: string;
-  readonly unit: string;
-  readonly description: string | null;
-  readonly is_local: boolean;
-  readonly is_in_season: boolean;
-  readonly mbg_slot: string | null;
-  readonly allergens: string[];
-  readonly used_in_menus: number;
-}
-
-export interface BackendRecipeRow {
-  readonly id: number;
-  readonly name: string;
-  readonly category: string;
-  readonly description: string | null;
-  readonly servings: number;
-  readonly cooking_time_min: number;
-  readonly steps: string[];
-  readonly tags: string[];
-  readonly estimated_cost: number;
-  readonly is_local: boolean;
-  readonly in_season: boolean;
-  readonly meal_kind: "hidangan" | "komponen";
-  readonly image_url: string | null;
-  readonly image_file_id: string | null;
-  readonly image_key: string | null;
-  readonly image_alt: string | null;
-  readonly price_updated_at: string | null;
-  readonly updated_at: string;
-  readonly nutrition: {
-    readonly calories: number;
-    readonly protein: number;
-    readonly carbohydrates: number;
-    readonly fat: number;
-    readonly fiber: number;
-  } | null;
-  readonly food_safety: ReadonlyArray<{
-    readonly id: number;
-    readonly topic: string;
-    readonly verification: string;
-  }>;
-  readonly ingredients: ReadonlyArray<{
-    readonly id: number;
-    readonly ingredient_id: number | null;
-    readonly name: string;
-    readonly quantity: number;
-    readonly unit: string;
-    readonly estimated_price: number;
-    readonly is_pantry: boolean;
-    readonly note: string | null;
-  }>;
-}
-
-export interface BackendSeasonRow {
-  readonly id: number;
-  readonly ingredient_id: number;
-  readonly month: number;
-  readonly status: string;
-}
-
-export interface BackendLocalRow {
-  readonly id: number;
-  readonly ingredient_id: number;
-  readonly region_id: number;
-  readonly level: string;
-  readonly source: string | null;
-}
-
-export interface BackendRegionRow {
-  readonly id: number;
-  readonly name: string;
-  readonly province: string;
-}
-
-export interface BackendScraperRunRow {
-  readonly id: number;
-  readonly source: string;
-  readonly started_at: string | null;
-  readonly finished_at: string | null;
-  readonly status: "success" | "partial" | "failed";
-  readonly items_count: number;
-  readonly error_message: string | null;
-}
-
-export interface BackendAdminStatsRow {
-  readonly ingredients: number;
-  readonly recipes: number;
-  readonly pending_prices: number;
-  readonly approved_prices: number;
-  readonly users: number;
-  readonly scraper_failures: number;
-}
-
-export interface BackendFoodSafetyRow {
-  readonly id: number;
-  readonly topic: string;
-  readonly risk_type: string;
-  readonly hazard: string;
-  readonly handling: string;
-  readonly source: string;
-  readonly verification: "pending" | "verified" | "rejected";
-}
-
-export async function backendAdminIngredients(
-  token: string,
-): Promise<BackendIngredientRow[]> {
-  return backendFetch<BackendIngredientRow[]>("/admin/ingredients", { method: "GET" }, token);
-}
-
-export async function backendAdminRecipes(token: string): Promise<BackendRecipeRow[]> {
-  return backendFetch<BackendRecipeRow[]>("/admin/recipes", { method: "GET" }, token);
-}
-
-export async function backendAdminSeasons(token: string): Promise<BackendSeasonRow[]> {
-  return backendFetch<BackendSeasonRow[]>("/admin/seasons", { method: "GET" }, token);
-}
-
-export async function backendAdminLocal(token: string): Promise<BackendLocalRow[]> {
-  return backendFetch<BackendLocalRow[]>("/admin/local", { method: "GET" }, token);
-}
-
-export async function backendRegions(token: string): Promise<BackendRegionRow[]> {
-  return backendFetch<BackendRegionRow[]>("/admin/regions", { method: "GET" }, token);
-}
-
-export async function backendAdminScraperRuns(
-  token: string,
-): Promise<BackendScraperRunRow[]> {
-  return backendFetch<BackendScraperRunRow[]>("/admin/scraper-runs", { method: "GET" }, token);
-}
-
-export async function backendAdminStats(token: string): Promise<BackendAdminStatsRow> {
-  return backendFetch<BackendAdminStatsRow>("/admin/stats", { method: "GET" }, token);
-}
-
-export async function backendAdminFoodSafety(
-  token: string,
-): Promise<BackendFoodSafetyRow[]> {
-  return backendFetch<BackendFoodSafetyRow[]>("/admin/food-safety", { method: "GET" }, token);
-}
-
-export async function backendPublicFoodSafety(
-  token: string,
-): Promise<BackendFoodSafetyRow[]> {
-  return backendFetch<BackendFoodSafetyRow[]>("/food-safety", { method: "GET" }, token);
-}
-
-export async function backendVerifyFoodSafety(
-  token: string,
-  itemId: number,
-  verification: "pending" | "verified" | "rejected",
-): Promise<BackendFoodSafetyRow> {
-  return backendFetch<BackendFoodSafetyRow>(
-    `/admin/food-safety/${itemId}`,
-    { method: "PATCH", body: JSON.stringify({ verification }) },
-    token,
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* CRUD data master admin (FR-30)                                     */
-/* ------------------------------------------------------------------ */
-
-export interface BackendIngredientPayload {
-  readonly name: string;
-  readonly category: string;
-  readonly unit: string;
-  readonly description: string | null;
-  readonly is_local: boolean;
-  readonly is_in_season: boolean;
-  readonly mbg_slot: string | null;
-  readonly allergens: string[];
-}
-
-export interface BackendRecipePayload {
-  readonly name: string;
-  readonly category: string;
-  readonly description: string | null;
-  readonly servings: number;
-  readonly cooking_time_min: number;
-  readonly steps: string[];
-  readonly tags: string[];
-  readonly is_local: boolean;
-  readonly in_season: boolean;
-  readonly estimated_cost: number;
-  readonly meal_kind: "hidangan" | "komponen";
-  readonly image_url: string | null;
-  readonly image_file_id: string | null;
-  readonly image_alt: string | null;
-  readonly food_safety_ids: number[];
-  readonly ingredients: ReadonlyArray<{
-    readonly ingredient_id: number | null;
-    readonly name: string;
-    readonly quantity: number;
-    readonly unit: string;
-    readonly estimated_price: number;
-    readonly is_pantry: boolean;
-    readonly note: string | null;
-  }>;
-}
-
-export async function backendPublicRecipes(): Promise<BackendRecipeRow[]> {
-  return backendFetch<BackendRecipeRow[]>("/recipes", { method: "GET" });
-}
-
-export async function backendPublicRecipe(id: number): Promise<BackendRecipeRow> {
-  return backendFetch<BackendRecipeRow>(`/recipes/${id}`, { method: "GET" });
-}
-
-export interface BackendSeasonPayload {
-  readonly ingredient_id: number;
-  readonly month: number;
-  readonly status: string;
-}
-
-export interface BackendLocalPayload {
-  readonly ingredient_id: number;
-  readonly region_id: number;
-  readonly level: string;
-  readonly source: string | null;
-}
-
-export async function backendCreateIngredient(
-  token: string,
-  input: BackendIngredientPayload,
-): Promise<unknown> {
-  return backendFetch("/admin/ingredients", { method: "POST", body: JSON.stringify(input) }, token);
-}
-
-export async function backendUpdateIngredient(
-  token: string,
-  id: number,
-  input: Partial<BackendIngredientPayload>,
-): Promise<unknown> {
-  return backendFetch(
-    `/admin/ingredients/${id}`,
-    { method: "PATCH", body: JSON.stringify(input) },
-    token,
-  );
-}
-
-export async function backendDeleteIngredient(token: string, id: number): Promise<void> {
-  await backendFetch(`/admin/ingredients/${id}`, { method: "DELETE" }, token);
-}
-
-export async function backendCreateRecipe(
-  token: string,
-  input: BackendRecipePayload,
-): Promise<unknown> {
-  return backendFetch("/admin/recipes", { method: "POST", body: JSON.stringify(input) }, token);
-}
-
-export async function backendUpdateRecipe(
-  token: string,
-  id: number,
-  input: Partial<BackendRecipePayload>,
-): Promise<unknown> {
-  return backendFetch(
-    `/admin/recipes/${id}`,
-    { method: "PATCH", body: JSON.stringify(input) },
-    token,
-  );
-}
-
-export async function backendDeleteRecipe(token: string, id: number): Promise<void> {
-  await backendFetch(`/admin/recipes/${id}`, { method: "DELETE" }, token);
-}
-
-export async function backendCreateSeason(
-  token: string,
-  input: BackendSeasonPayload,
-): Promise<unknown> {
-  return backendFetch("/admin/seasons", { method: "POST", body: JSON.stringify(input) }, token);
-}
-
-export async function backendUpdateSeason(
-  token: string,
-  id: number,
-  input: Partial<BackendSeasonPayload>,
-): Promise<unknown> {
-  return backendFetch(
-    `/admin/seasons/${id}`,
-    { method: "PATCH", body: JSON.stringify(input) },
-    token,
-  );
-}
-
-export async function backendDeleteSeason(token: string, id: number): Promise<void> {
-  await backendFetch(`/admin/seasons/${id}`, { method: "DELETE" }, token);
-}
-
-export async function backendCreateLocal(
-  token: string,
-  input: BackendLocalPayload,
-): Promise<unknown> {
-  return backendFetch("/admin/local", { method: "POST", body: JSON.stringify(input) }, token);
-}
-
-export async function backendUpdateLocal(
-  token: string,
-  id: number,
-  input: Partial<BackendLocalPayload>,
-): Promise<unknown> {
-  return backendFetch(
-    `/admin/local/${id}`,
-    { method: "PATCH", body: JSON.stringify(input) },
-    token,
-  );
-}
-
-export async function backendDeleteLocal(token: string, id: number): Promise<void> {
-  await backendFetch(`/admin/local/${id}`, { method: "DELETE" }, token);
-}
-
-
-export interface BackendFoodSafetyPayload {
-  readonly topic: string;
-  readonly risk_type: string;
-  readonly hazard: string;
-  readonly handling: string;
-  readonly source: string;
-  readonly verification: "pending" | "verified" | "rejected";
-}
-
-export async function backendCreateFoodSafety(
-  token: string,
-  input: BackendFoodSafetyPayload,
-): Promise<BackendFoodSafetyRow> {
-  return backendFetch<BackendFoodSafetyRow>(
-    "/admin/food-safety",
-    { method: "POST", body: JSON.stringify(input) },
-    token,
-  );
-}
-
-export async function backendUpdateFoodSafety(
-  token: string,
-  id: number,
-  input: Partial<BackendFoodSafetyPayload>,
-): Promise<BackendFoodSafetyRow> {
-  return backendFetch<BackendFoodSafetyRow>(
-    `/admin/food-safety/${id}`,
-    { method: "PATCH", body: JSON.stringify(input) },
-    token,
-  );
-}
-
-export async function backendDeleteFoodSafety(token: string, id: number): Promise<void> {
-  await backendFetch(`/admin/food-safety/${id}`, { method: "DELETE" }, token);
-}

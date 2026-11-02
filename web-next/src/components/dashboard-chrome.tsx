@@ -3,6 +3,7 @@
 import {
   Bell,
   Calendar,
+  ChevronDown,
   Compass,
   Heart,
   History,
@@ -99,6 +100,13 @@ const ROLE_LABEL: Readonly<Record<string, string>> = {
   petugas_sppg: "Petugas SPPG",
   admin: "Admin",
   guest: "Tamu",
+};
+
+/** Tujuan baris akun di sidebar & dropdown topbar, menyesuaikan peran. */
+const accountTarget = (role?: string): { href: string; label: string } => {
+  if (role === "petugas_sppg") return { href: "/sppg/settings", label: "Pengaturan" };
+  if (role === "admin") return { href: "/admin", label: "Pengaturan" };
+  return { href: "/profile", label: "Profil" };
 };
 
 function NavItem({ item }: { item: NavLink }) {
@@ -219,14 +227,19 @@ export function DashboardSidebar() {
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-800">
               {user ? initialsOf(user.name) : "?"}
             </div>
-            <div className="min-w-0 flex-1">
+            <Link
+              href={accountTarget(user?.role).href}
+              onClick={() => setSidebarOpen(false)}
+              className="min-w-0 flex-1 rounded-lg py-1 transition hover:bg-stone-100 dark:hover:bg-stone-800"
+              aria-label={`Buka ${accountTarget(user?.role).label}`}
+            >
               <p className="truncate text-sm font-semibold text-stone-800">
                 {user?.name ?? "Pengguna"}
               </p>
-              <p className="text-[11px] text-stone-400">
+              <p className="truncate text-[11px] text-stone-400">
                 {user ? (ROLE_LABEL[user.role] ?? "Pengguna") : "Pengguna"}
               </p>
-            </div>
+            </Link>
             <button
               type="button"
               onClick={handleLogout}
@@ -339,10 +352,102 @@ function NotificationBell() {
   );
 }
 
+/**
+ * Dropdown akun pada topbar (desktop & mobile): nama + peran, tautan Profil /
+ * Pengaturan sesuai peran, dan aksi Keluar.
+ */
+function AccountMenu({ compact }: { readonly compact?: boolean }) {
+  const { data: user } = useSession();
+  const target = accountTarget(user?.role);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    await fetch("/api/auth/logout", { method: "POST" });
+    window.location.assign("/login");
+  };
+
+  const menuLinkClass =
+    "flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-100 dark:text-stone-200 dark:hover:bg-stone-800";
+
+  return (
+    <Popover.Root>
+      <Popover.Trigger asChild>
+        <button
+          type="button"
+          aria-label="Menu akun"
+          disabled={isLoggingOut}
+          className="flex items-center gap-2 rounded-xl p-1 transition hover:bg-stone-100 dark:hover:bg-stone-800"
+        >
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-[10px] font-bold text-brand-800">
+            {user ? initialsOf(user.name) : "?"}
+          </span>
+          {!compact ? (
+            <span className="hidden max-w-32 truncate text-xs font-semibold text-stone-700 lg:inline dark:text-stone-200">
+              {user?.name ?? "Pengguna"}
+            </span>
+          ) : null}
+          <ChevronDown className="size-3.5 text-stone-400" aria-hidden="true" />
+        </button>
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content
+          align="end"
+          sideOffset={8}
+          className="glass-strong z-50 w-64 max-w-[calc(100vw-2rem)] rounded-2xl p-2 focus:outline-none"
+        >
+          <div className="px-3 py-2">
+            <p className="truncate text-sm font-semibold text-stone-800 dark:text-stone-100">
+              {user?.name ?? "Pengguna"}
+            </p>
+            <p className="mt-0.5 text-[11px] text-stone-400">
+              {user ? `${user.email} • ${ROLE_LABEL[user.role] ?? "Pengguna"}` : "Tamu"}
+            </p>
+          </div>
+
+          <div className="my-1 h-px bg-stone-200/70 dark:bg-stone-700/60" />
+
+          <Popover.Close asChild>
+            <Link href="/profile" className={menuLinkClass}>
+              <User className="size-4" aria-hidden="true" /> Profil
+            </Link>
+          </Popover.Close>
+
+          {target.href !== "/profile" ? (
+            <Popover.Close asChild>
+              <Link href={target.href} className={menuLinkClass}>
+                <Settings className="size-4" aria-hidden="true" /> {target.label}
+              </Link>
+            </Popover.Close>
+          ) : null}
+
+          {user?.role === "admin" ? (
+            <Popover.Close asChild>
+              <Link href="/admin" className={menuLinkClass}>
+                <ShieldCheck className="size-4" aria-hidden="true" /> Panel Admin
+              </Link>
+            </Popover.Close>
+          ) : null}
+
+          <div className="my-1 h-px bg-stone-200/70 dark:bg-stone-700/60" />
+
+          <button
+            type="button"
+            onClick={() => void handleLogout()}
+            disabled={isLoggingOut}
+            className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 dark:hover:bg-red-950/40"
+          >
+            <LogOut className="size-4" aria-hidden="true" /> Keluar
+          </button>
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
+  );
+}
+
 /** Topbar dashboard — versi mobile + desktop. */
 export function DashboardTopbar() {
   const setSidebarOpen = useUIStore((state) => state.setSidebarOpen);
-  const { data: user } = useSession();
 
   return (
     <>
@@ -364,9 +469,7 @@ export function DashboardTopbar() {
         </div>
         <div className="flex items-center gap-3">
           <NotificationBell />
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-[11px] font-bold text-brand-800">
-            {user ? initialsOf(user.name) : "?"}
-          </div>
+          <AccountMenu compact />
         </div>
       </header>
 
@@ -382,14 +485,7 @@ export function DashboardTopbar() {
         <div className="flex items-center gap-5">
           <NotificationBell />
           <div className="h-6 w-px bg-stone-200" />
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-[10px] font-bold text-brand-800">
-              {user ? initialsOf(user.name) : "?"}
-            </div>
-            <span className="text-xs font-semibold text-stone-700">
-              {user?.name ?? "Pengguna"}
-            </span>
-          </div>
+          <AccountMenu />
         </div>
       </header>
     </>

@@ -1,27 +1,12 @@
 import type { Metadata } from "next";
-import { AdminSeasons } from "@/components/admin-seasons";
-import { AdminPageHeader } from "@/components/admin-table";
-import { listAdminIngredients, listSeasons } from "@/server/admin-master";
+import { AdminMasterManager } from "@/components/admin-master-manager";
 
 export const metadata: Metadata = {
-  title: "Kelola Musim",
+  title: "Data Musim",
   robots: { index: false, follow: false },
 };
 
-/** FR-22: pengelolaan data musim komoditas. */
-export default async function AdminSeasonsPage() {
-  const [seasons, ingredients] = await Promise.all([
-    listSeasons(),
-    listAdminIngredients(),
-  ]);
-
-  return (
-    <div>
-      <AdminPageHeader
-        title="Musim Komoditas"
-        description="Tambah, ubah, dan hapus data musim. Data ini menjadi salah satu bobot penilaian rekomendasi."
-      />
-      <AdminSeasons items={seasons} ingredients={ingredients} />
-    </div>
-  );
+/** FR-31: CRUD ketersediaan musiman per bahan per bulan. */
+export default function AdminSeasonsPage() {
+  return <AdminMasterManager resource="seasons" />;
 }

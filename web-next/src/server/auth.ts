@@ -9,10 +9,6 @@ import {
   type UserRole,
 } from "@/schemas/auth";
 import {
-  familyProfileFormSchema,
-  type FamilyProfile,
-} from "@/schemas/profile";
-import {
   backendLogin,
   backendRegister,
   backendUserCount,
@@ -20,13 +16,12 @@ import {
 } from "@/server/backend-api";
 
 /**
- * Autentikasi sisi server (FR-01, FR-02, FR-03, FR-05).
+ * Autentikasi sisi server (FR-01).
  *
- * Registrasi & login sekarang memakai backend FastAPI + MySQL (lihat
+ * Registrasi & login memakai backend FastAPI + MySQL (lihat
  * `server/backend-api.ts`). Verifikasi sesi dilakukan dengan memvalidasi JWT
- * secara sinkron (HS256) agar tetap kompatibel dengan pemanggil yang bersifat
- * sinkron (Route Handler, Server Component, rate limiter). Data profil keluarga
- * masih disimpan in-memory pada fase ini.
+ * secara sinkron (HS256). Profil keluarga (FR-02) kini tersimpan di database
+ * melalui route `/api/profile`.
  */
 
 const JWT_SECRET = process.env.JWT_SECRET ?? "nutrivillage-dev-secret-change-me";
@@ -50,44 +45,37 @@ const toUser = (stored: StoredUser): User =>
   });
 
 interface AuthStores {
-  usersByEmail: Map<string, StoredUser>;
   usersById: Map<string, StoredUser>;
   sessions: Map<string, string>;
-  profiles: Map<string, FamilyProfile>;
-  phones: Map<string, string>;
 }
 
 /**
- * Store in-memory pada `globalThis` agar dibagi seluruh Route Handler dalam satu
- * proses (profil keluarga, data diri, dan sesi tamu). Data akun persisten ada di
- * MySQL melalui FastAPI.
+ * Store in-memory pada `globalThis` hanya untuk hal-hal yang memang tidak
+ * punya rumah di database: cache klaim JWT & sesi tamu (yang sengaja tanpa
+ * akun). Data diri pengguna (nama, HP, notifikasi) tersimpan di MySQL via
+ * FastAPI — lihat route `/api/account`.
  */
 const globalForAuth = globalThis as unknown as { __nutrivillageAuth?: AuthStores };
 
 const stores: AuthStores =
   globalForAuth.__nutrivillageAuth ??
   (globalForAuth.__nutrivillageAuth = {
-    usersByEmail: new Map<string, StoredUser>(),
     usersById: new Map<string, StoredUser>(),
     sessions: new Map<string, string>(),
-    profiles: new Map<string, FamilyProfile>(),
-    phones: new Map<string, string>(),
   });
 
-const { usersByEmail, usersById, sessions, profiles, phones } = stores;
+const { usersById, sessions } = stores;
 
-/** Menyimpan salinan user (dari JWT/login) agar `getUserContact` dapat membacanya. */
+/** Menyimpan salinan user (dari JWT/login) agar sesi backend terbaca cepat. */
 const cacheUser = (user: User): void => {
-  const stored: StoredUser = {
+  usersById.set(user.id, {
     id: user.id,
     name: user.name,
     email: user.email,
     passwordHash: "",
     role: user.role,
     createdAt: user.createdAt,
-  };
-  usersById.set(user.id, stored);
-  usersByEmail.set(user.email, stored);
+  });
 };
 
 const createSession = (userId: string): string => {
@@ -137,6 +125,8 @@ export interface RegisterUserInput {
   readonly email: string;
   readonly password: string;
   readonly role?: RegistrableRole;
+  /** Nomor HP opsional (10-15 digit) — disimpan pada `users.phone`. */
+  readonly phone?: string;
   readonly nip?: string;
   readonly sppgUnit?: string;
   readonly region?: string;
@@ -149,6 +139,7 @@ export async function registerUser(input: RegisterUserInput): Promise<AuthResult
     email: input.email,
     password: input.password,
     role: input.role ?? "user",
+    phone: input.phone,
     nip: input.nip,
     sppgUnit: input.sppgUnit,
     region: input.region,
@@ -229,79 +220,11 @@ export function getUserIdFromRequest(request: Request): string {
   return user?.id ?? "anon";
 }
 
-export async function saveFamilyProfile(
-  userId: string,
-  rawInput: unknown,
-): Promise<FamilyProfile> {
-  const parsed = familyProfileFormSchema.safeParse(rawInput);
-  if (!parsed.success) {
-    throw new Error("Data keluarga belum valid. Periksa kembali isian Anda.");
-  }
-
-  const profile: FamilyProfile = {
-    userId,
-    dailyBudget: parsed.data.dailyBudget,
-    region: parsed.data.region,
-    members: parsed.data.members.map((member) => ({
-      id: `member-${crypto.randomUUID()}`,
-      name: member.name,
-      age: member.age,
-      ageGroup: member.ageGroup,
-      gender: member.gender,
-      weightKg: member.weightKg,
-      heightCm: member.heightCm,
-      activityLevel: member.activityLevel,
-      allergies: member.allergies,
-    })),
-    preferences: parsed.data.preferences,
-    avoidedIngredients: parsed.data.avoidedIngredients,
-    mealsPerDay: parsed.data.mealsPerDay,
-    includeSusu: parsed.data.includeSusu,
-    onboarded: true,
-    updatedAt: new Date().toISOString(),
-  };
-
-  profiles.set(userId, profile);
-  return profile;
-}
-
-export function getFamilyProfile(userId: string): FamilyProfile | null {
-  return profiles.get(userId) ?? null;
-}
-
 /* ------------------------------------------------------------------ */
-/* Data diri pengguna (FR-18)                                          */
+/* Data diri pengguna (FR-18) — lihat route `/api/account`             */
 /* ------------------------------------------------------------------ */
-
-export interface UserContact {
-  readonly name: string;
-  readonly email: string;
-  readonly phone: string;
-}
-
-export function getUserContact(userId: string): UserContact | null {
-  const stored = usersById.get(userId);
-  if (!stored) return null;
-  return { name: stored.name, email: stored.email, phone: phones.get(userId) ?? "" };
-}
-
-export async function updateUserContact(
-  userId: string,
-  input: UserContact,
-): Promise<UserContact> {
-  const stored = usersById.get(userId);
-  if (!stored) throw new Error("Pengguna tidak ditemukan");
-
-  const nextEmail = input.email.trim().toLowerCase();
-  if (stored.email !== nextEmail) {
-    usersByEmail.delete(stored.email);
-    stored.email = nextEmail;
-    usersByEmail.set(nextEmail, stored);
-  }
-  stored.name = input.name;
-  phones.set(userId, input.phone);
-  return { name: stored.name, email: stored.email, phone: input.phone };
-}
+/* Data diri (nama, nomor HP, notifikasi) tidak lagi disimpan di memori:
+   route `/api/account` membaca & menulis ke database via backend FastAPI. */
 
 /** Total pengguna terdaftar (dibaca dari MySQL melalui backend, khusus admin). */
 export async function countUsers(): Promise<number> {

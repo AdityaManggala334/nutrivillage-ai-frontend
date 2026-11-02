@@ -1,7 +1,7 @@
 import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
 
-const fieldBase =
+export const fieldBase =
   "w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm text-stone-900 shadow-sm transition placeholder:text-stone-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-stone-900 dark:text-stone-100 dark:placeholder:text-stone-500";
 
 export interface InputProps extends ComponentProps<"input"> {

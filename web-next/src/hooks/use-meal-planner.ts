@@ -74,8 +74,13 @@ export function useGenerateShoppingListMutation(weekId: string) {
 
 /** FR-15: tambahkan bahan dari satu resep (hasil Explore / detail) ke daftar belanja. */
 export function useAddRecipeToShoppingListMutation() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (recipeId: string) =>
       apiSend("/api/shopping-list", "POST", { recipeId }, ShoppingListSchema),
+    onSuccess: (data) => {
+      queryClient.setQueryData(queryKeys.shoppingList.current(), data);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.shoppingList.all });
+    },
   });
 }

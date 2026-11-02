@@ -1,63 +1,49 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import {
-  AdminPriceSchema,
-  AdminPriceUpdateSchema,
-  PriceStatusSchema,
-} from "@/schemas/admin";
+import { PriceStatusSchema } from "@/schemas/admin";
 import { getSessionToken, getUserByToken } from "@/server/auth";
-import { deleteAdminPrice, updateAdminPrice, verifyAdminPrice } from "@/server/admin-prices";
+import { backendVerifyPrice } from "@/server/backend-api";
 import { backendErrorResponse, jsonError, parseJsonBody } from "@/server/http";
 
 export const dynamic = "force-dynamic";
 
-const BodySchema = z.union([
-  z.object({ status: PriceStatusSchema.exclude(["pending"]) }),
-  AdminPriceUpdateSchema,
-]);
-
-function parseId(raw: string): number | null {
-  const id = Number(raw);
-  return Number.isInteger(id) && id > 0 ? id : null;
+interface RouteContext {
+  readonly params: Promise<{ id: string }>;
 }
 
-/** PATCH /api/admin/prices/[id] — ubah angka harga atau setujui/tolak. */
-export async function PATCH(
-  request: Request,
-  context: { params: Promise<{ id: string }> },
-): Promise<NextResponse> {
-  const user = getUserByToken(getSessionToken(request));
-  if (!user) return jsonError("Sesi tidak valid. Silakan masuk kembali.", 401);
-  if (user.role !== "admin") return jsonError("Hanya admin yang dapat mengubah harga.", 403);
-  const priceId = parseId((await context.params).id);
-  if (priceId === null) return jsonError("ID harga tidak valid.", 400);
+const BodySchema = z.object({ status: PriceStatusSchema, note: z.string().max(255).nullish() });
 
+function requireAdmin(request: Request) {
+  const user = getUserByToken(getSessionToken(request));
+  if (!user) return { error: jsonError("Sesi tidak valid. Silakan masuk kembali.", 401) };
+  if (user.role !== "admin") {
+    return { error: jsonError("Hanya admin yang dapat memverifikasi harga.", 403) };
+  }
+  return { user };
+}
+
+/**
+ * PATCH /api/admin/prices/[id] — FR-23 verifikasi harga oleh admin.
+ * Diteruskan ke backend FastAPI (`POST /admin/prices/{id}/verify`) sehingga
+ * perubahan tersimpan di tabel `prices` + `price_verifications`.
+ */
+export async function PATCH(request: Request, context: RouteContext): Promise<NextResponse> {
+  const guard = requireAdmin(request);
+  if (guard.error) return guard.error;
+
+  const { id } = await context.params;
   const parsed = await parseJsonBody(request, BodySchema);
   if (!parsed.ok) return parsed.response;
-  try {
-    const price =
-      "status" in parsed.data
-        ? await verifyAdminPrice(priceId, parsed.data.status)
-        : await updateAdminPrice(priceId, parsed.data);
-    return NextResponse.json(AdminPriceSchema.parse(price));
-  } catch (error) {
-    return backendErrorResponse(error);
-  }
-}
 
-/** DELETE /api/admin/prices/[id] — hapus data harga dari database. */
-export async function DELETE(
-  request: Request,
-  context: { params: Promise<{ id: string }> },
-): Promise<NextResponse> {
-  const user = getUserByToken(getSessionToken(request));
-  if (!user) return jsonError("Sesi tidak valid. Silakan masuk kembali.", 401);
-  if (user.role !== "admin") return jsonError("Hanya admin yang dapat menghapus harga.", 403);
-  const priceId = parseId((await context.params).id);
-  if (priceId === null) return jsonError("ID harga tidak valid.", 400);
+  const priceId = Number(id);
+  if (!Number.isInteger(priceId) || priceId <= 0) {
+    return jsonError("ID harga tidak valid.", 400);
+  }
+
   try {
-    await deleteAdminPrice(priceId);
-    return NextResponse.json({ ok: true });
+    const token = getSessionToken(request) as string;
+    const price = await backendVerifyPrice(token, priceId, parsed.data.status, parsed.data.note ?? undefined);
+    return NextResponse.json(price);
   } catch (error) {
     return backendErrorResponse(error);
   }

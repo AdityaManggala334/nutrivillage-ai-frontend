@@ -32,14 +32,14 @@ export function AdminTable({
   return (
     <div className="glass overflow-hidden rounded-2xl">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[720px] text-left text-sm">
+        <table className="w-full min-w-[720px] text-sm">
           <thead className="border-b border-stone-200 bg-stone-50 dark:border-stone-800 dark:bg-stone-800/50">
             <tr>
               {headers.map((head) => (
                 <th
                   key={head}
                   scope="col"
-                  className="px-4 py-3 text-xs font-semibold tracking-wide text-stone-500 uppercase dark:text-stone-400"
+                  className="border-r border-stone-200 px-4 py-3 text-center text-xs font-semibold tracking-wide text-stone-500 uppercase last:border-r-0 dark:border-stone-700 dark:text-stone-400"
                 >
                   {head}
                 </th>
@@ -53,24 +53,49 @@ export function AdminTable({
   );
 }
 
+const ALIGN_CLASS: Record<"left" | "center" | "right", string> = {
+  left: "text-left",
+  center: "text-center",
+  right: "text-right",
+};
+
 export function AdminCell({
   children,
   className,
+  align = "left",
 }: {
   readonly children: ReactNode;
   readonly className?: string;
+  /** Perataan isi kolom. Default: kiri (header tetap tengah). */
+  readonly align?: "left" | "center" | "right";
 }) {
   return (
-    <td className={cn("px-4 py-3 text-stone-700 dark:text-stone-200", className)}>{children}</td>
+    <td
+      className={cn(
+        "border-r border-stone-100 px-4 py-3 align-middle text-stone-700 last:border-r-0 dark:border-stone-800 dark:text-stone-200",
+        ALIGN_CLASS[align],
+        className,
+      )}
+    >
+      {children}
+    </td>
   );
 }
 
-export type AdminStatus = "pending" | "approved" | "rejected" | "success" | "partial" | "failed";
+export type AdminStatus =
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "success"
+  | "partial"
+  | "failed"
+  | "verified";
 
 const STATUS_MAP: Record<AdminStatus, { tone: "harvest" | "brand" | "danger"; label: string }> = {
   pending: { tone: "harvest", label: "Pending" },
   approved: { tone: "brand", label: "Disetujui" },
   rejected: { tone: "danger", label: "Ditolak" },
+  verified: { tone: "brand", label: "Terverifikasi" },
   success: { tone: "brand", label: "Berhasil" },
   partial: { tone: "harvest", label: "Sebagian" },
   failed: { tone: "danger", label: "Gagal" },

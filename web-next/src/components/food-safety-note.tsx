@@ -1,6 +1,7 @@
 import { ShieldCheck } from "lucide-react";
 import { Badge, Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
-import { listVerifiedFoodSafety } from "@/server/admin-master";
+import { listVerifiedFoodSafety } from "@/server/market-api";
+import type { FoodSafetyInfo } from "@/schemas/admin";
 import type { Recipe } from "@/schemas/domain";
 
 /**
@@ -8,7 +9,15 @@ import type { Recipe } from "@/schemas/domain";
  * Menggantikan kebutuhan fitur pemindaian bahan; bukan hasil deteksi kamera.
  */
 export async function FoodSafetyNote({ recipe }: { recipe: Recipe }) {
-  const verified = await listVerifiedFoodSafety();
+  // Hanya entri yang sudah diverifikasi admin yang layak ditampilkan sebagai fakta.
+  let verified: FoodSafetyInfo[] = [];
+  try {
+    verified = await listVerifiedFoodSafety();
+  } catch (error) {
+    // Sengaja diam: kartu saran keamanan bersifat pelengkap.
+    console.error("[food-safety] gagal memuat:", error);
+    return null;
+  }
 
   const ingredientNames = recipe.ingredients.map((ingredient) => ingredient.name.toLowerCase());
   const matches = verified.filter((item) => {

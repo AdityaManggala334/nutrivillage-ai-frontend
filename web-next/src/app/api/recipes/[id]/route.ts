@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getRecipeById } from "@/server/data";
 import { jsonError } from "@/server/http";
 
+export const dynamic = "force-dynamic";
+
 interface RouteContext {
   readonly params: Promise<{ id: string }>;
 }

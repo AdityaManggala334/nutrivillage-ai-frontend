@@ -38,9 +38,12 @@ sama, sehingga menjadi **satu aplikasi Next.js utuh**:
 
 - Node.js **20+**, npm 10+
 
+> Aplikasi frontend ini berada di dalam folder **`frontend/`** (bersaudara dengan
+> `backend/`). Semua perintah di bawah dijalankan dari `web-next/frontend`.
+
 ```bash
 # dari root repository
-cd web-next
+cd web-next/frontend
 
 npm install       # cukup sekali
 npm run dev       # http://localhost:3000
@@ -289,3 +292,70 @@ Semua respons API divalidasi Zod di `lib/api-client.ts` **sebelum** masuk cache 
   font Plus Jakarta Sans, radius & shadow yang sama).
 - Data bersifat simulasi (in-memory di server) karena fokus praktikum front-end.
 - Aksesibilitas: ARIA, `focus-visible`, `prefers-reduced-motion`, navigasi keyboard.
+
+---
+
+## 11. Pembaruan: Desain Glassmorphism, Animasi, Peran SPPG & FR-11
+
+### 11.1 Desain & Animasi (tanpa dependensi baru)
+
+- **Glassmorphism** diterapkan pada landing, auth, onboarding, dan dashboard
+  (masyarakat & SPPG) lewat utility di `src/app/globals.css`:
+  `.glass`, `.glass-strong`, `.glass-subtle`, token `--shadow-glass`,
+  dan latar gradient-mesh (`.animate-mesh`).
+- **Animasi scroll & interaksi** dibuat tanpa pustaka eksternal:
+  `src/hooks/use-in-view.ts` (IntersectionObserver) + `src/components/motion/reveal.tsx`
+  (`.reveal` / `.is-visible`) + efek tekan `.press` / `.lift`. Semuanya dimatikan
+  otomatis pada `prefers-reduced-motion`.
+- Tombol `Button` kini memiliki feedback tekan (`active:scale`).
+- Primitif baru: `src/components/ui/glass-card.tsx`, `src/components/glass-shell.tsx`.
+
+### 11.2 Peran & Navigasi
+
+- Navigasi `dashboard-chrome.tsx` bersifat **role-aware**: `petugas_sppg` mendapat
+  menu SPPG (`/sppg`, `/sppg/schools`, dll.), sedangkan `user`/`guest` tetap pada alur
+  keluarga.
+- Middleware + `PROTECTED_ROUTES` melindungi `/sppg`; hanya `petugas_sppg` (dan admin
+  untuk meninjau) yang diizinkan. Endpoint backend juga menerapkan RBAC.
+
+### 11.3 FR-11 — Sekolah & Kelompok Penerima Manfaat
+
+- **Backend FastAPI/MySQL baru**: tabel `schools`, `beneficiary_groups`,
+  `budget_policies` (`backend/db/schema.sql`, `backend/app/models/*`).
+- Endpoint (`/api/v1`) + Route Handler proxy Next (`/api/schools*`,
+  `/api/budget-policies`). Otorisasi: petugas hanya mengakses sekolah miliknya.
+- Halaman SPPG baru: `/sppg` (dashboard), `/sppg/schools` (CRUD sekolah),
+  `/sppg/schools/[id]` (kelola kelompok), `/sppg/explore`, `/sppg/meal-planner`,
+  `/sppg/shopping-list`, `/sppg/settings`.
+- Perhitungan SPPG **selalu terikat konteks (sekolah + kelompok)** dan
+  memperhitungkan yield resep (`kebutuhan per porsi × jumlah porsi`).
+  Daftar belanja hanya mencakup **biaya bahan pangan**, bukan biaya operasional.
+- Batas anggaran bersifat konfigurasi (`budget_policies`). Bila belum
+  diverifikasi, UI menampilkan status **"belum dikonfigurasi"** dan tidak
+  mengarang angka.
+
+### 11.4 Admin & Keamanan Pangan
+
+- Halaman baru `/admin/keamanan-pangan` untuk verifikasi informasi keamanan
+  pangan (`/api/admin/food-safety/[id]`). Hanya entri **terverifikasi** yang
+  ditampilkan sebagai fakta, termasuk pada detail resep (`FoodSafetyNote`).
+- Fitur scan kamera/computer vision **tidak** ditambahkan; edukasi digantikan
+  informasi keamanan pangan.
+- Modul inventaris (Bahan Masuk, Pemeriksaan Bahan, Stok) **tidak** ditambahkan.
+
+### 11.5 Bagian yang masih mock / dependensi
+
+- Resep, rekomendasi (mesin SAW dalam TypeScript), riwayat, meal plan keluarga,
+  dan daftar belanja keluarga tetap memakai store in-memory Next.js.
+- Rencana menu SPPG saat ini disimpan di store klien (per sekolah+kelompok);
+  persistensi per sekolah di backend masih menjadi dependensi lanjutan.
+- Profil keluarga disimpan di memori server; data sekolah & kebijakan anggaran
+  sudah persisten di MySQL.
+
+```
+src/app/(sppg)/            # area Petugas SPPG
+src/components/sppg/       # komponen alur SPPG (dashboard, sekolah, explore, dll.)
+src/app/api/schools/       # proxy FR-11 ke FastAPI
+src/app/api/budget-policies/
+src/app/(admin)/admin/keamanan-pangan/
+```
