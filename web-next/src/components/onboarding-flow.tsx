@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Button, FieldError, Input, Label, Select } from "@/components/ui";
 import { useProfile, useSaveProfileMutation } from "@/hooks/use-profile";
+import { useSession } from "@/hooks/use-session";
 import { cn } from "@/lib/utils";
 import { ALLERGY_OPTIONS } from "@/schemas/explore";
 import {
@@ -87,6 +88,8 @@ export function OnboardingFlow({ editMode = false }: { readonly editMode?: boole
   const router = useRouter();
   const profileQuery = useProfile();
   const saveMutation = useSaveProfileMutation();
+  const sessionQuery = useSession();
+  const isGuest = sessionQuery.data?.role === "guest";
   const prefilled = useRef(false);
 
   const [step, setStep] = useState(editMode ? MAX_STEP : 0);
@@ -232,6 +235,12 @@ export function OnboardingFlow({ editMode = false }: { readonly editMode?: boole
                 </div>
               ) : null}
 
+              {isGuest ? (
+                <div role="alert" className="mb-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+                  Mode tamu tidak menyimpan profil keluarga. Daftar atau masuk agar data keluarga,
+                  riwayat, dan rencana menu tersimpan. Anda tetap bisa memakai Explore secara manual.
+                </div>
+              ) : null}
               <h2 className="text-xl">Ringkasan Keluarga</h2>
               <p className="mt-1 text-sm text-stone-600">
                 Isi anggaran, wilayah, dan anggota keluarga agar rekomendasi lebih tepat.

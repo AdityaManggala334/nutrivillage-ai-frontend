@@ -62,6 +62,16 @@ export const RecipeSchema = z.object({
   imageUrl: z.string().nullable().optional(),
   /** Kunci palet gradien untuk placeholder foto (tanpa aset eksternal). */
   imageKey: z.string().min(1),
+  /** Catatan keamanan pangan yang ditautkan admin ke menu ini. */
+  foodSafety: z
+    .array(
+      z.object({
+        id: z.number().int().positive(),
+        topic: z.string().min(1),
+        verification: z.string(),
+      }),
+    )
+    .optional(),
   isLocal: z.boolean(),
   inSeason: z.boolean(),
   tags: z.array(z.string()),

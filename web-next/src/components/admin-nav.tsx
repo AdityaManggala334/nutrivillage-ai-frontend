@@ -11,7 +11,9 @@ import {
   ScrollText,
   ShieldAlert,
   Tags,
+  Upload,
   UserCog,
+  Wallet,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -36,6 +38,8 @@ const GROUPS = [
     title: "Harga & Scraper",
     links: [
       { href: "/admin/harga", label: "Verifikasi Harga", icon: Tags },
+      { href: "/admin/impor", label: "Impor Dataset", icon: Upload },
+      { href: "/admin/anggaran", label: "Kebijakan Anggaran", icon: Wallet },
       { href: "/admin/monitoring", label: "Monitoring Scraper", icon: Leaf },
     ],
   },

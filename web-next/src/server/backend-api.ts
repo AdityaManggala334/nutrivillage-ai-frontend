@@ -52,6 +52,9 @@ const RETRYABLE_STATUS = new Set([502, 503, 504]);
 // navigasi terasa lambat saat backend free tier sedang bangun (cold start).
 const FETCH_ATTEMPTS = 2;
 const RETRY_BASE_DELAY_MS = 800;
+// Vercel memutus fungsi pada 10 detik (Hobby). Batasi tiap percobaan supaya
+// pengguna menerima pesan "backend sedang bangun", bukan 504 tanpa penjelasan.
+const ATTEMPT_TIMEOUT_MS = 8_000;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -65,7 +68,10 @@ async function fetchWithRetry(url: string, init: RequestInit): Promise<Response>
   let lastError: unknown;
   for (let attempt = 1; attempt <= FETCH_ATTEMPTS; attempt += 1) {
     try {
-      const response = await fetch(url, init);
+      const response = await fetch(url, {
+        ...init,
+        signal: init.signal ?? AbortSignal.timeout(ATTEMPT_TIMEOUT_MS),
+      });
       if (!RETRYABLE_STATUS.has(response.status) || attempt === FETCH_ATTEMPTS) {
         return response;
       }
@@ -83,9 +89,10 @@ async function backendFetch<T>(
   init: RequestInit = {},
   token?: string,
 ): Promise<T> {
+  const isForm = typeof FormData !== "undefined" && init.body instanceof FormData;
   const headers: Record<string, string> = {
     Accept: "application/json",
-    ...(init.body ? { "Content-Type": "application/json" } : {}),
+    ...(init.body && !isForm ? { "Content-Type": "application/json" } : {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 
@@ -336,6 +343,40 @@ export async function backendListBudgetPolicies(
   return backendFetch<BackendBudgetPolicy[]>("/budget-policies", { method: "GET" }, token);
 }
 
+export interface BackendBudgetPolicyUpdate {
+  readonly amount_per_portion?: number | null;
+  readonly source?: string | null;
+  readonly verified?: boolean;
+}
+
+export async function backendUpdateBudgetPolicy(
+  token: string,
+  id: number,
+  input: BackendBudgetPolicyUpdate,
+): Promise<BackendBudgetPolicy> {
+  return backendFetch<BackendBudgetPolicy>(
+    `/budget-policies/${id}`,
+    { method: "PATCH", body: JSON.stringify(input) },
+    token,
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Impor dataset CSV (FR-30)                                          */
+/* ------------------------------------------------------------------ */
+
+export interface BackendImportReport {
+  readonly jumlah_error?: number;
+  readonly [key: string]: unknown;
+}
+
+export async function backendImportDataset(
+  token: string,
+  form: FormData,
+): Promise<BackendImportReport> {
+  return backendFetch<BackendImportReport>("/admin/import", { method: "POST", body: form }, token);
+}
+
 /* ------------------------------------------------------------------ */
 /* Manajemen pengguna (admin)                                          */
 /* ------------------------------------------------------------------ */
@@ -512,7 +553,7 @@ export interface BackendFamilyProfileInput {
     readonly age_group: string;
     readonly gender: string | null;
     readonly weight_kg: number;
-    readonly height_cm: number;
+    readonly height_cm: number | null;
     readonly activity_level: string;
     readonly allergies: string[];
   }>;

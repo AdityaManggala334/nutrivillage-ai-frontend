@@ -44,6 +44,11 @@ export function toRecipe(payload: BackendRecipe): Recipe {
     imageAlt: payload.image_alt ?? `Foto ${payload.name}`,
     imageUrl: payload.image_url,
     imageKey: payload.image_key ?? "default",
+    foodSafety: (payload.food_safety ?? []).map((item) => ({
+      id: Number(item.id),
+      topic: item.topic,
+      verification: item.verification,
+    })),
     isLocal: payload.is_local,
     inSeason: payload.in_season,
     tags: payload.tags ?? [],

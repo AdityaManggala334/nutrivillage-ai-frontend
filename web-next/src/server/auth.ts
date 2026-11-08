@@ -46,7 +46,6 @@ const toUser = (stored: StoredUser): User =>
 
 interface AuthStores {
   usersById: Map<string, StoredUser>;
-  sessions: Map<string, string>;
 }
 
 /**
@@ -61,10 +60,9 @@ const stores: AuthStores =
   globalForAuth.__nutrivillageAuth ??
   (globalForAuth.__nutrivillageAuth = {
     usersById: new Map<string, StoredUser>(),
-    sessions: new Map<string, string>(),
   });
 
-const { usersById, sessions } = stores;
+const { usersById } = stores;
 
 /** Menyimpan salinan user (dari JWT/login) agar sesi backend terbaca cepat. */
 const cacheUser = (user: User): void => {
@@ -78,11 +76,6 @@ const cacheUser = (user: User): void => {
   });
 };
 
-const createSession = (userId: string): string => {
-  const token = `nv-${crypto.randomUUID()}`;
-  sessions.set(token, userId);
-  return token;
-};
 
 /** Verifikasi JWT HS256 secara sinkron (tanpa dependensi tambahan). */
 function decodeJwtClaims(token: string): Record<string, unknown> | null {
@@ -159,7 +152,29 @@ export async function authenticateUser(input: {
   return { user: session.user, token: session.token };
 }
 
+/**
+ * Sesi tamu memakai JWT bertanda tangan (bukan token in-memory) supaya tetap
+ * valid antar-instance serverless. Tamu tidak punya baris di database, jadi
+ * data yang butuh akun (profil, riwayat) memang tidak tersimpan.
+ */
 export function createGuestSession(): AuthResult {
+  const now = Math.floor(Date.now() / 1000);
+  const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
+  const payload = Buffer.from(
+    JSON.stringify({
+      sub: "user-guest",
+      name: "Tamu",
+      email: "tamu@nutrivillage.ai",
+      role: "guest",
+      created_at: new Date().toISOString(),
+      iat: now,
+      exp: now + 60 * 60 * 4,
+    }),
+  ).toString("base64url");
+  const signature = createHmac("sha256", JWT_SECRET)
+    .update(`${header}.${payload}`)
+    .digest("base64url");
+  const token = `${header}.${payload}.${signature}`;
   const stored: StoredUser = {
     id: "user-guest",
     name: "Tamu",
@@ -169,18 +184,12 @@ export function createGuestSession(): AuthResult {
     createdAt: new Date().toISOString(),
   };
   usersById.set(stored.id, stored);
-  return { user: toUser(stored), token: createSession(stored.id) };
+  return { user: toUser(stored), token };
 }
 
 export function getUserByToken(token: string | null): User | null {
   if (!token) return null;
 
-  // Sesi lokal (tamu/in-memory).
-  const localUserId = sessions.get(token);
-  if (localUserId) {
-    const stored = usersById.get(localUserId);
-    return stored ? toUser(stored) : null;
-  }
 
   // Sesi backend (JWT).
   const claims = decodeJwtClaims(token);

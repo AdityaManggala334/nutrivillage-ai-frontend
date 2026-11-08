@@ -41,7 +41,8 @@ function toClientProfile(payload: BackendFamilyProfile | null) {
 export async function GET(request: Request): Promise<NextResponse> {
   const token = getSessionToken(request);
   const user = getUserByToken(token);
-  if (!user) return NextResponse.json(null);
+  // Tamu tidak punya baris di database: profil tidak bisa disimpan.
+  if (!user || user.role === "guest") return NextResponse.json(null);
   try {
     return NextResponse.json(toClientProfile(await backendGetProfile(token as string)));
   } catch {
@@ -56,6 +57,12 @@ export async function PUT(request: Request): Promise<NextResponse> {
   const user = getUserByToken(token);
   if (!user) {
     return jsonError("Sesi tidak valid. Silakan masuk kembali.", 401);
+  }
+  if (user.role === "guest") {
+    return jsonError(
+      "Mode tamu tidak menyimpan profil keluarga. Daftar atau masuk untuk menyimpan data keluarga.",
+      403,
+    );
   }
 
   let raw: unknown;

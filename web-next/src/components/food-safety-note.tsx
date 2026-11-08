@@ -19,16 +19,23 @@ export async function FoodSafetyNote({ recipe }: { recipe: Recipe }) {
     return null;
   }
 
+  // Prioritas: relasi eksplisit menu -> catatan (diatur admin di form menu).
+  const linkedIds = new Set(
+    (recipe.foodSafety ?? [])
+      .filter((item) => item.verification === "verified")
+      .map((item) => item.id),
+  );
+  const linked = verified.filter((item) => linkedIds.has(Number(item.id)));
+
+  // Cadangan untuk menu lama yang belum ditautkan: cocokkan nama bahan.
   const ingredientNames = recipe.ingredients.map((ingredient) => ingredient.name.toLowerCase());
-  const matches = verified.filter((item) => {
+  const matched = verified.filter((item) => {
     const topic = item.topic.toLowerCase();
     const keyword = topic.split(" ")[0] ?? topic;
-    return ingredientNames.some(
-      (name) => name.includes(keyword) || topic.includes(name),
-    );
+    return ingredientNames.some((name) => name.includes(keyword) || topic.includes(name));
   });
 
-  const items = matches.length > 0 ? matches : verified.slice(0, 2);
+  const items = linked.length > 0 ? linked : matched;
   if (items.length === 0) return null;
 
   return (

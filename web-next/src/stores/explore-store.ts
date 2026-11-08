@@ -37,12 +37,16 @@ export const useExploreStore = create<ExploreState>()(
     }),
     {
       name: "nutrivillage-explore",
-      version: 1,
+      version: 2,
       partialize: (state) => ({
         payload: state.payload,
         sppgPayload: state.sppgPayload,
       }),
       skipHydration: true,
+      // Payload versi lama memakai bentuk `members` per kelompok umur.
+      // Setelah skema berganti ke per anggota, data lama dibuang agar tidak
+      // membuat form/validasi gagal.
+      migrate: () => ({ payload: null, sppgPayload: null }) as ExploreState,
     },
   ),
 );

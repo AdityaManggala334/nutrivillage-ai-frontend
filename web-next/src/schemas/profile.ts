@@ -49,10 +49,10 @@ export const familyMemberFormSchema = z
       .number()
       .positive("Berat badan harus lebih dari 0")
       .max(250, "Berat badan tidak wajar"),
-    heightCm: z.coerce
-      .number()
-      .min(50, "Tinggi badan minimal 50 cm")
-      .max(250, "Tinggi badan maksimal 250 cm"),
+    // Tinggi boleh kosong untuk data lama; mesin memakai nilai bawaan bila null.
+    heightCm: z
+      .union([z.literal(""), z.coerce.number().min(50, "Tinggi badan minimal 50 cm").max(250)])
+      .transform((value) => (value === "" ? null : value)),
     activityLevel: ActivityLevelSchema,
     allergies: stringList,
   })
