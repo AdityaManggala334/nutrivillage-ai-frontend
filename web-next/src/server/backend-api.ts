@@ -47,43 +47,64 @@ interface BackendAuthSession {
   readonly token: string;
 }
 
-const RETRYABLE_STATUS = new Set([502, 503, 504]);
-// Cukup 1 percobaan ulang dengan jeda pendek — retry panjang justru membuat
+// 429 ikut diulang: Render berada di belakang Cloudflare, yang membalas 429
+// saat ada burst permintaan (mis. admin membuka beberapa halaman sekaligus).
+const RETRYABLE_STATUS = new Set([429, 502, 503, 504]);
+// Cukup 2 percobaan ulang dengan jeda pendek — retry panjang justru membuat
 // navigasi terasa lambat saat backend free tier sedang bangun (cold start).
-const FETCH_ATTEMPTS = 2;
-const RETRY_BASE_DELAY_MS = 800;
-// Vercel memutus fungsi pada 10 detik (Hobby). Batasi tiap percobaan supaya
-// pengguna menerima pesan "backend sedang bangun", bukan 504 tanpa penjelasan.
-const ATTEMPT_TIMEOUT_MS = 8_000;
-
+const FETCH_ATTEMPTS = 3;
+const RETRY_BASE_DELAY_MS = 700;
+// Vercel memutus fungsi pada 10 detik (Hobby). Semua percobaan berbagi satu
+// anggaran waktu agar pengguna menerima pesan jelas, bukan 504 tanpa penjelasan.
+const TOTAL_BUDGET_MS = 8_500;
+const MIN_ATTEMPT_MS = 1_200;
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
-
+/** Menghormati header Retry-After (detik) bila dikirim Cloudflare/Render. */
+function retryAfterMs(response: Response): number | null {
+  const raw = response.headers.get("retry-after");
+  if (!raw) return null;
+  const seconds = Number(raw);
+  return Number.isFinite(seconds) && seconds > 0 ? Math.min(seconds * 1000, 3_000) : null;
+}
 /**
  * fetch dengan retry singkat. Backend free tier (Render) bisa "bangun" dari
- * tidur (cold start) yang tampak sebagai error koneksi / 502-504.
+ * tidur (cold start) yang tampak sebagai error koneksi / 502-504, dan Cloudflare
+ * di depannya membalas 429 saat permintaan menumpuk.
  */
 async function fetchWithRetry(url: string, init: RequestInit): Promise<Response> {
+  const deadline = Date.now() + TOTAL_BUDGET_MS;
   let lastError: unknown;
+
   for (let attempt = 1; attempt <= FETCH_ATTEMPTS; attempt += 1) {
+    const remaining = deadline - Date.now();
+    if (remaining < MIN_ATTEMPT_MS) break;
+
+    let response: Response | null = null;
     try {
-      const response = await fetch(url, {
+      response = await fetch(url, {
         ...init,
-        signal: init.signal ?? AbortSignal.timeout(ATTEMPT_TIMEOUT_MS),
+        signal: init.signal ?? AbortSignal.timeout(remaining),
       });
-      if (!RETRYABLE_STATUS.has(response.status) || attempt === FETCH_ATTEMPTS) {
-        return response;
-      }
     } catch (error) {
       lastError = error;
-      if (attempt === FETCH_ATTEMPTS) throw error;
     }
-    await sleep(RETRY_BASE_DELAY_MS * attempt);
-  }
-  throw lastError instanceof Error ? lastError : new Error("Gagal menghubungi backend");
-}
 
+    if (response && !RETRYABLE_STATUS.has(response.status)) return response;
+    if (response && attempt === FETCH_ATTEMPTS) return response;
+
+    const wait =
+      (response ? retryAfterMs(response) : null) ?? RETRY_BASE_DELAY_MS * attempt;
+    if (Date.now() + wait >= deadline) {
+      return response ?? Promise.reject(lastError ?? new Error("Batas waktu backend habis"));
+    }
+    await sleep(wait);
+  }
+
+  if (lastError) throw lastError;
+  throw new Error("Batas waktu backend habis");
+}
 async function backendFetch<T>(
   path: string,
   init: RequestInit = {},
@@ -112,7 +133,10 @@ async function backendFetch<T>(
   }
 
   if (!response.ok) {
-    let message = `Permintaan ke backend gagal (HTTP ${response.status})`;
+    let message =
+      response.status === 429
+        ? "Server sedang membatasi permintaan (429). Tunggu beberapa detik lalu coba lagi."
+        : `Permintaan ke backend gagal (HTTP ${response.status})`;
     try {
       const body: unknown = await response.json();
       if (typeof body === "object" && body !== null && "detail" in body) {
