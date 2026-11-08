@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { buildSppgPlan } from "@/server/sppg-plan";
-import { backendErrorResponse } from "@/server/http";
+import { getSessionToken, getUserByToken } from "@/server/auth";
+import { backendErrorResponse, jsonError } from "@/server/http";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,12 @@ const BodySchema = z.object({
 
 /** POST /api/recommendations/sppg — paket MBG per jenjang, anggaran BGN. */
 export async function POST(request: Request): Promise<NextResponse> {
+  const user = getUserByToken(getSessionToken(request));
+  if (!user) return jsonError("Sesi tidak valid. Silakan masuk kembali.", 401);
+  if (user.role !== "petugas_sppg" && user.role !== "admin") {
+    return jsonError("Hanya Petugas SPPG yang dapat menyusun rencana massal.", 403);
+  }
+
   let body: unknown;
   try {
     body = await request.json();
