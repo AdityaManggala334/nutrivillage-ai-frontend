@@ -44,19 +44,25 @@ export const AGE_GROUP_SHORT: Readonly<Record<AgeGroup, string>> = {
 
 export const MEAL_SLOTS: readonly MealSlot[] = [
   "sarapan",
+  "selingan-pagi",
   "makan-siang",
+  "selingan-sore",
   "makan-malam",
 ];
 
 export const MEAL_SLOT_LABELS: Readonly<Record<MealSlot, string>> = {
   sarapan: "Sarapan",
+  "selingan-pagi": "Selingan Pagi",
   "makan-siang": "Makan Siang",
+  "selingan-sore": "Selingan Sore",
   "makan-malam": "Makan Malam",
 };
 
 export const MEAL_SLOT_ICONS: Readonly<Record<MealSlot, string>> = {
   sarapan: "☀️",
+  "selingan-pagi": "🍎",
   "makan-siang": "🍛",
+  "selingan-sore": "🥛",
   "makan-malam": "🌙",
 };
 

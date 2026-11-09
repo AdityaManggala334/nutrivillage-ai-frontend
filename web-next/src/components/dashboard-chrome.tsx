@@ -22,7 +22,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { useNotifications } from "@/hooks/use-notifications";
+import { useNotifications, useUnreadNotificationCount } from "@/hooks/use-notifications";
 import { initialsOf, useSession } from "@/hooks/use-session";
 import { cn, formatDateId } from "@/lib/utils";
 import { useUIStore } from "@/stores/ui-store";
@@ -285,9 +285,11 @@ const KIND_DOT: Record<"info" | "success" | "warning", string> = {
 /** Ikon lonceng + popup notifikasi (Radix Popover). Klik item → /notifications. */
 function NotificationBell() {
   const { data, isPending, isError } = useNotifications();
+  const { data: jumlahData } = useUnreadNotificationCount();
   const notifications = data ?? [];
-  const unread = notifications.filter((item) => !item.read).length;
-
+  // B9: hitungan tidak tergantung daftar yang dimuat — tetap tampil walau
+  // popover belum dibuka, dan kosong saat memuat supaya tidak berkedip 0.
+  const unread = jumlahData?.count ?? notifications.filter((item) => !item.read).length;
   return (
     <Popover.Root>
       <Popover.Trigger asChild>

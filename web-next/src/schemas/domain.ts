@@ -5,7 +5,13 @@ import { z } from "zod";
 /* ------------------------------------------------------------------ */
 
 export const AgeGroupSchema = z.enum(["balita", "anak", "dewasa", "lansia"]);
-export const MealSlotSchema = z.enum(["sarapan", "makan-siang", "makan-malam"]);
+export const MealSlotSchema = z.enum([
+  "sarapan",
+  "makan-siang",
+  "makan-malam",
+  "selingan-pagi",
+  "selingan-sore",
+]);
 export const DayOfWeekSchema = z.enum([
   "senin",
   "selasa",

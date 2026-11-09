@@ -1,11 +1,12 @@
 "use client";
 
-import { Check, ListChecks, RefreshCw, Save, Trash2 } from "lucide-react";
+import { Check, ListChecks, Plus, RefreshCw, Save, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
-import { Button, Skeleton, Textarea } from "@/components/ui";
+import { Button, Input, Label, Skeleton, Textarea } from "@/components/ui";
 import {
+  useAddManualShoppingItemMutation,
   useDeleteShoppingItemMutation,
   useRegenerateShoppingListMutation,
   useShoppingList,
@@ -22,13 +23,52 @@ export function ShoppingListClient() {
   const deleteMutation = useDeleteShoppingItemMutation();
   const noteMutation = useUpdateShoppingNoteMutation();
   const regenerateMutation = useRegenerateShoppingListMutation(DEFAULT_WEEK_ID);
+  const tambahMutation = useAddManualShoppingItemMutation();
 
   const [note, setNote] = useState("");
   const [actionError, setActionError] = useState<string | null>(null);
   const [noteSaved, setNoteSaved] = useState(false);
+  // B5 (FR-06 manual): form tambah bahan di luar jadwal/resep.
+  const [formTerbuka, setFormTerbuka] = useState(false);
+  const [namaBaru, setNamaBaru] = useState("");
+  const [jumlahBaru, setJumlahBaru] = useState("1");
+  const [satuanBaru, setSatuanBaru] = useState("kg");
+  const [hargaBaru, setHargaBaru] = useState("");
   useEffect(() => {
     if (listQuery.data) setNote(listQuery.data.note);
   }, [listQuery.data]);
+
+  const tambahManual = (event: React.FormEvent) => {
+    event.preventDefault();
+    setActionError(null);
+    const nama = namaBaru.trim();
+    const harga = Number(hargaBaru || "0");
+    if (nama.length < 2) {
+      setActionError("Nama bahan minimal 2 karakter.");
+      return;
+    }
+    const jumlah = Number(jumlahBaru);
+    if (!Number.isFinite(jumlah) || jumlah <= 0) {
+      setActionError("Jumlah harus angka lebih dari 0.");
+      return;
+    }
+    if (!Number.isFinite(harga) || harga < 0) {
+      setActionError("Harga tidak boleh negatif.");
+      return;
+    }
+    tambahMutation.mutate(
+      { name: nama, quantity: jumlah, unit: satuanBaru.trim() || "kg", estimatedPrice: harga },
+      {
+        onSuccess: () => {
+          setNamaBaru("");
+          setJumlahBaru("1");
+          setHargaBaru("");
+          setFormTerbuka(false);
+        },
+        onError: (error) => setActionError(error.message),
+      },
+    );
+  };
 
   if (listQuery.isPending) {
     return (
@@ -63,19 +103,94 @@ export function ShoppingListClient() {
         <p className="text-sm text-stone-500 dark:text-stone-400">
           {list.items.length} bahan • {checkedCount} sudah dibeli
         </p>
-        <Button
-          intent="harvest"
-          onClick={() => {
-            setActionError(null);
-            regenerateMutation.mutate(undefined, {
-              onError: (error) => setActionError(error.message),
-            });
-          }}
-          loading={regenerateMutation.isPending}
-        >
-          <RefreshCw className="size-4" aria-hidden="true" /> Generate dari Jadwal
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            intent="outline"
+            onClick={() => {
+              setActionError(null);
+              setFormTerbuka((buka) => !buka);
+            }}
+            aria-expanded={formTerbuka}
+          >
+            <Plus className="size-4" aria-hidden="true" /> Tambah Manual
+          </Button>
+          <Button
+            intent="harvest"
+            onClick={() => {
+              setActionError(null);
+              regenerateMutation.mutate(undefined, {
+                onError: (error) => setActionError(error.message),
+              });
+            }}
+            loading={regenerateMutation.isPending}
+          >
+            <RefreshCw className="size-4" aria-hidden="true" /> Generate dari Jadwal
+          </Button>
+        </div>
       </div>
+
+      {/* B5 (FR-06 manual): form tambah bahan di luar jadwal/resep. */}
+      {formTerbuka ? (
+        <form
+          onSubmit={tambahManual}
+          className="grid gap-3 rounded-2xl border border-stone-200 p-4 sm:grid-cols-[minmax(0,1fr)_90px_110px_140px_auto] dark:border-stone-800"
+        >
+          <div className="space-y-1">
+            <Label htmlFor="manual-nama">Nama bahan</Label>
+            <Input
+              id="manual-nama"
+              value={namaBaru}
+              onChange={(event) => setNamaBaru(event.target.value)}
+              placeholder="Contoh: Garam, minyak, tisu"
+              required
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="manual-jumlah">Jumlah</Label>
+            <Input
+              id="manual-jumlah"
+              type="number"
+              min="0.1"
+              step="any"
+              value={jumlahBaru}
+              onChange={(event) => setJumlahBaru(event.target.value)}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="manual-satuan">Satuan</Label>
+            <Input
+              id="manual-satuan"
+              value={satuanBaru}
+              onChange={(event) => setSatuanBaru(event.target.value)}
+              placeholder="kg / ikat"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="manual-harga">Estimasi (Rp)</Label>
+            <Input
+              id="manual-harga"
+              type="number"
+              min="0"
+              value={hargaBaru}
+              onChange={(event) => setHargaBaru(event.target.value)}
+              placeholder="0"
+            />
+          </div>
+          <div className="flex items-end gap-2">
+            <Button type="submit" intent="primary" loading={tambahMutation.isPending}>
+              Tambah
+            </Button>
+            <Button
+              type="button"
+              intent="ghost"
+              onClick={() => setFormTerbuka(false)}
+              aria-label="Batal tambah bahan"
+            >
+              Batal
+            </Button>
+          </div>
+        </form>
+      ) : null}
 
       {/* E2/E3: umpan balik error aksi (mis. mode tamu atau sesi berakhir). */}
       {actionError ? (

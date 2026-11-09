@@ -14,7 +14,9 @@ import {
   Wallet,
 } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 import { ErrorState } from "@/components/error-state";
+import { FamilyProfileDialog } from "@/components/family-profile-dialog";
 import { Badge, Button, ButtonLink, RecipeCardSkeleton } from "@/components/ui";
 import { MealPlanResults } from "@/components/meal-plan-results";
 import { useRecommendations } from "@/hooks/use-recommendations";
@@ -81,6 +83,7 @@ export function DashboardHome() {
   const profile = profileQuery.data ?? null;
   const payload = profile ? toPayload(profile) : null;
   const recommendations = useRecommendations(payload);
+  const [detailTerbuka, setDetailTerbuka] = useState(false);
 
   const userName = user?.name ?? "Keluarga";
 
@@ -133,13 +136,17 @@ export function DashboardHome() {
                 Data keluarga digunakan sebagai dasar penyusunan rekomendasi menu.
               </p>
             </div>
-            <Link
-              href="/onboarding"
+            {/* B2: tombol ini dulu menuju /onboarding, yang langsung
+                meng-redirect balik ke dashboard jika profil sudah lengkap -
+                terlihat seperti tombol yang hanya me-refresh halaman. */}
+            <button
+              type="button"
+              onClick={() => setDetailTerbuka(true)}
               className="hidden items-center gap-1 text-xs font-semibold text-brand-700 hover:text-brand-900 sm:flex"
             >
               Lihat detail
               <ArrowRight className="size-4" aria-hidden="true" />
-            </Link>
+            </button>
           </div>
 
           <div className="grid sm:grid-cols-3">
@@ -182,6 +189,15 @@ export function DashboardHome() {
           ) : null}
         </section>
       )}
+
+      {/* B2: modal detail profil keluarga dari Beranda */}
+      {profile ? (
+        <FamilyProfileDialog
+          profile={profile}
+          open={detailTerbuka}
+          onOpenChange={setDetailTerbuka}
+        />
+      ) : null}
 
       {/* Two columns */}
       <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_320px]">

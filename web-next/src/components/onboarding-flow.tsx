@@ -111,6 +111,25 @@ export function OnboardingFlow({ editMode = false }: { readonly editMode?: boole
     }
   }, [isOnboarded, editMode, router]);
 
+  // B1: profil sudah lengkap -> jangan render slide onboarding sama sekali.
+  // Sebelumnya slide sempat tampil lalu hilang setelah data profil tiba
+  // (useEffect replace di atas), yang terlihat sebagai "onboarding berkedip".
+  if (profileQuery.isPending && !editMode) {
+    return (
+      <section aria-labelledby="onboarding-title" className="app-container flex justify-center py-24">
+        <div className="w-full max-w-md text-center" role="status" aria-live="polite">
+          <Loader2 className="mx-auto size-8 animate-spin text-brand-600" aria-hidden="true" />
+          <h2 id="onboarding-title" className="mt-6 text-xl">
+            Memeriksa profil keluarga…
+          </h2>
+        </div>
+      </section>
+    );
+  }
+  if (isOnboarded && !editMode) {
+    return null;
+  }
+
   useEffect(() => {
     const profile = profileQuery.data;
     if (!editMode || prefilled.current || !profile) return;

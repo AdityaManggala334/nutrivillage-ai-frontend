@@ -74,11 +74,33 @@ export async function listMealPlansFromDb(weekId: string): Promise<MealPlan> {
   const entries = await backendListMealPlans(token, weekId);
   return {
     weekId,
-    weekLabel: WEEK_LABEL,
+    // B6: label pekan mengikuti pekan yang diminta, bukan selalu "Pekan Ini".
+    weekLabel: labelPekan(weekId),
     entries: entries
       .map(toMealPlanEntry)
       .filter((entry): entry is MealPlanEntry => entry !== null),
   };
+}
+
+/** Ubah id pekan ("pekan-2026-47") menjadi label yang bisa dibaca. */
+export function labelPekan(weekId: string): string {
+  const cocok = /(\d{4})-?W?(\d{1,2})$/.exec(weekId.trim());
+  if (!cocok) return WEEK_LABEL;
+  const [tahunStr, pekanStr] = [cocok[1], cocok[2]];
+  const tahun = Number(tahunStr);
+  const pekan = Number(pekanStr);
+  if (!Number.isFinite(tahun) || !Number.isFinite(pekan) || pekan < 1 || pekan > 53) {
+    return WEEK_LABEL;
+  }
+  // ISO-8601: pekan 1 adalah pekan yang memuat Kamis pertama Januari.
+  const mulai = new Date(Date.UTC(tahun, 0, 4));
+  const hariKamis = (mulai.getUTCDay() || 7);
+  mulai.setUTCDate(mulai.getUTCDate() - hariKamis + 1 + (pekan - 1) * 7);
+  const akhir = new Date(mulai);
+  akhir.setUTCDate(akhir.getUTCDate() + 6);
+  const fmt = (d: Date) =>
+    d.toLocaleDateString("id-ID", { day: "numeric", month: "short", timeZone: "UTC" });
+  return `Pekan ${pekan} (${fmt(mulai)} - ${fmt(akhir)} ${tahun})`;
 }
 
 /** Assign / ganti menu pada satu slot (upsert di backend). */

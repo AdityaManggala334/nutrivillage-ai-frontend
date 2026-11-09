@@ -62,3 +62,26 @@ export function useRegenerateShoppingListMutation(weekId: string) {
     },
   });
 }
+
+/** FR-06 (manual): tambah bahan secara manual ke daftar aktif. */
+export function useAddManualShoppingItemMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { name: string; quantity: number; unit: string; estimatedPrice: number }) =>
+      apiSend(
+        "/api/shopping-list/item",
+        "POST",
+        {
+          name: input.name,
+          quantity: input.quantity,
+          unit: input.unit,
+          estimated_price: input.estimatedPrice,
+        },
+        ShoppingListSchema,
+      ),
+    onSuccess: (data) => {
+      queryClient.setQueryData(queryKeys.shoppingList.current(), data);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.shoppingList.all });
+    },
+  });
+}

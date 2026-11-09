@@ -318,6 +318,9 @@ export function ExploreForm({ onGenerate, isLoading }: ExploreFormProps) {
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="meals">Makan per hari</Label>
           <Input id="meals" type="number" min={1} max={5} value={mealsPerDay} onChange={(event) => setMealsPerDay(event.target.value)} />
+          <p className="text-xs text-stone-500">
+            1–5 waktu makan penuh; semuanya dihitung ke kebutuhan gizi harian.
+          </p>
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="location">Wilayah</Label>

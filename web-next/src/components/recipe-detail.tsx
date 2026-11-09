@@ -1,5 +1,6 @@
 import { ArrowLeft, Clock, Users } from "lucide-react";
 import Link from "next/link";
+import { AiExplanation } from "@/components/ai-explanation";
 import { FoodSafetyNote } from "@/components/food-safety-note";
 import { NutritionFacts } from "@/components/nutrition-facts";
 import { PriceDisclaimer } from "@/components/price-disclaimer";
@@ -65,6 +66,9 @@ export function RecipeDetail({ recipe }: RecipeDetailProps) {
           </div>
 
           <NutritionFacts nutrition={recipe.nutrition} servings={recipe.servings} />
+
+          {/* C3: penjelasan AI on-demand (klien kirim recipe_id, backend isi konteks). */}
+          <AiExplanation recipeId={recipe.id} />
 
           <FoodSafetyNote recipe={recipe} />
 

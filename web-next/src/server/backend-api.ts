@@ -109,8 +109,8 @@ async function fetchWithRetry(url: string, init: RequestInit): Promise<Response>
   if (lastError) throw lastError;
   throw new Error("Batas waktu backend habis");
 }
-async function backendFetch<T>(
-  path: string,
+/** Klien HTTP dasar ke backend; diekspor untuk proxy yang butuh payload bebas. */
+export async function backendFetch<T>(  path: string,
   init: RequestInit = {},
   token?: string,
 ): Promise<T> {

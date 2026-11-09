@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { AlertTriangle, CheckCircle2, Leaf, Plus } from "lucide-react";
 import { Badge, Button } from "@/components/ui";
+import { SaveRecipeButton } from "@/components/save-recipe-button";
 import { formatRupiah } from "@/lib/utils";
 import type { MealItem, MealPlan } from "@/schemas/meal-plan";
 
@@ -32,10 +34,17 @@ export interface MealPlanResultsProps {
   readonly compact?: boolean;
   /** Bila diisi, tiap komponen punya tombol "Rencanakan". */
   readonly onPlanItem?: (item: MealItem) => void;
+  /** B4: tampilkan tombol simpan ke riwayat pada tiap komponen. */
+  readonly showSaveAction?: boolean;
 }
 
 /** FR-10: hasil berupa PAKET makan per waktu, lengkap dengan biaya & peringatan. */
-export function MealPlanResults({ plan, compact = false, onPlanItem }: MealPlanResultsProps) {
+export function MealPlanResults({
+  plan,
+  compact = false,
+  onPlanItem,
+  showSaveAction = false,
+}: MealPlanResultsProps) {
   if (plan.status === "infeasible") {
     return (
       <div className="glass-subtle rounded-2xl p-6">
@@ -140,9 +149,14 @@ export function MealPlanResults({ plan, compact = false, onPlanItem }: MealPlanR
                     {SLOT_LABELS[item.slot] ?? item.slot}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-medium text-stone-800 dark:text-stone-100">
+                    {/* B3: nama menu jadi tautan ke detail resep. */}
+                    <Link
+                      href={`/recipes/${item.recipeId}`}
+                      className="block truncate text-sm font-medium text-stone-800 hover:text-brand-700 hover:underline dark:text-stone-100 dark:hover:text-brand-300"
+                      title={`Buka detail ${item.name}`}
+                    >
                       {item.name}
-                    </span>
+                    </Link>
                     <span className="block text-[11px] text-stone-400 tabular-nums">
                       {Math.round(item.calories)} kkal · {item.protein.toFixed(1)} g protein ·{" "}
                       {formatRupiah(item.cost)}
@@ -157,6 +171,14 @@ export function MealPlanResults({ plan, compact = false, onPlanItem }: MealPlanR
                     >
                       <Plus className="size-3.5" aria-hidden="true" />
                     </Button>
+                  ) : null}
+                  {showSaveAction ? (
+                    <SaveRecipeButton
+                      recipeId={String(item.recipeId)}
+                      kind="recommendation"
+                      compact
+                      allowRepeat
+                    />
                   ) : null}
                 </li>
               ))}

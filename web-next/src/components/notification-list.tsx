@@ -4,7 +4,7 @@ import { CheckCircle2, Info, TriangleAlert } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { ErrorState } from "@/components/error-state";
 import { Badge, Button, Skeleton } from "@/components/ui";
-import { useNotifications } from "@/hooks/use-notifications";
+import { useMarkNotificationReadMutation, useNotifications } from "@/hooks/use-notifications";
 import { formatDateId } from "@/lib/utils";
 import type { Notification } from "@/schemas/content";
 
@@ -23,6 +23,7 @@ const KIND = {
  */
 export function NotificationList() {
   const { data, isPending, isError, error, refetch, isFetching } = useNotifications();
+  const tandaiBaca = useMarkNotificationReadMutation();
 
   if (isPending) {
     return (
@@ -84,6 +85,18 @@ export function NotificationList() {
                 {formatDateId(notification.createdAt)}
               </p>
             </div>
+            {/* B9: tandai sudah dibaca untuk notifikasi yang belum dibaca. */}
+            {!notification.read ? (
+              <button
+                type="button"
+                onClick={() => tandaiBaca.mutate(notification.id)}
+                disabled={tandaiBaca.isPending}
+                className="self-start rounded-lg px-2 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-50 disabled:opacity-50 dark:text-brand-300 dark:hover:bg-brand-950"
+                aria-label={`Tandai "${notification.title}" sebagai sudah dibaca`}
+              >
+                Tandai dibaca
+              </button>
+            ) : null}
           </li>
         );
       })}

@@ -11,7 +11,7 @@ export interface GuestLoginButtonProps {
   readonly size?: "sm" | "md" | "lg";
 }
 
-/** FR-03: masuk sebagai tamu lalu diarahkan ke Explore. */
+/** FR-01 revisi: masuk sebagai tamu, lalu ke katalog resep (bukan Explore). */
 export function GuestLoginButton({
   children = "Lihat menu tanpa daftar",
   className,
@@ -25,7 +25,9 @@ export function GuestLoginButton({
     mutation.mutate(undefined, {
       onSuccess: () => {
         // Reload penuh agar state/cache user sebelumnya tidak terbawa.
-        window.location.assign("/explore");
+        // B7: tamu diarahkan ke katalog resep — mesin rekomendasi hanya
+        // untuk akun terdaftar sesuai FR-01 revisi.
+        window.location.assign("/katalog");
       },
     });
   };

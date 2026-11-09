@@ -9,10 +9,15 @@ import type { ExploreFormData } from "@/schemas/explore";
 
 export interface RecommendationResultsProps {
   readonly payload: ExploreFormData | null;
+  /** B4: tampilkan aksi simpan per komponen (Explore, bukan dashboard). */
+  readonly showSaveAction?: boolean;
 }
 
 /** FR-10: area hasil paket makan (satu paket per waktu makan). */
-export function RecommendationResults({ payload }: RecommendationResultsProps) {
+export function RecommendationResults({
+  payload,
+  showSaveAction = false,
+}: RecommendationResultsProps) {
   const { data, isPending, isError, error, refetch, isFetching } = useRecommendations(payload);
 
   if (!payload) {
@@ -29,7 +34,9 @@ export function RecommendationResults({ payload }: RecommendationResultsProps) {
       <div aria-busy="true" aria-live="polite" className="space-y-4">
         <Skeleton className="h-28 w-full" />
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {[0, 1, 2].map((index) => (
+          {/* Jumlah skeleton mengikuti frekuensi makan yang dipilih, supaya
+              tata letak tidak melompat saat data tiba. */}
+          {Array.from({ length: payload.mealsPerDay }).map((_, index) => (
             <Skeleton key={index} className="h-64 w-full" />
           ))}
         </div>
@@ -52,5 +59,5 @@ export function RecommendationResults({ payload }: RecommendationResultsProps) {
   }
 
   if (!data) return null;
-  return <MealPlanResults plan={data} />;
+  return <MealPlanResults plan={data} showSaveAction={showSaveAction} />;
 }
