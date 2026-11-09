@@ -1,13 +1,16 @@
 "use client";
 
-import { Pencil, Plus, Trash2, X } from "lucide-react";
-import { type FormEvent, useState } from "react";
+import { ImagePlus, Pencil, Plus, Trash2, X } from "lucide-react";
+import { type FormEvent, useRef, useState } from "react";
 import { AdminCell, AdminPageHeader, AdminTable } from "@/components/admin-table";
 import { Badge, Button, Dialog, DialogContent, DialogHeader, DialogTitle, FieldError, Input, Label, Select, Textarea } from "@/components/ui";
 import { useMasterCreate, useMasterDelete, useMasterList, useMasterUpdate, type MasterRow } from "@/hooks/use-master";
 import { formatRupiah } from "@/lib/utils";
 
 const RECIPE_CATEGORIES = ["Makanan Utama", "Sayur", "Lauk", "Berkuah", "Camilan", "Minuman"];
+
+/** Cerminan batas backend Next (api/admin/upload/route.ts). */
+const MAKS_FOTO_MB = 5;
 
 interface IngredientRow {
   ingredient_id: number | null;
@@ -151,28 +154,73 @@ export function AdminRecipeManager() {
   const [form, setForm] = useState<RecipeForm>(EMPTY);
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  /** Baris yang sedang dibuka dialog preview fotonya. */
+  const [preview, setPreview] = useState<{ url: string; alt: string } | null>(null);
+  const targetUpload = useRef<MasterRow | null>(null);
+  const fileInput = useRef<HTMLInputElement | null>(null);
 
   const ingredients = ingredientsQuery.data ?? [];
   const safetyEntries = safetyQuery.data ?? [];
+
+  /** Unggah ke ImageKit; dipakai form maupun aksi baris. */
+  async function kirimFoto(file: File): Promise<{ url: string; fileId?: string }> {
+    const body = new FormData();
+    body.append("file", file);
+    const response = await fetch("/api/admin/upload", { method: "POST", body });
+    const data = (await response.json().catch(() => null)) as {
+      url?: string;
+      fileId?: string;
+      message?: string;
+    } | null;
+    if (!response.ok || !data?.url) throw new Error(data?.message ?? "Gagal mengunggah gambar.");
+    return { url: data.url, fileId: data.fileId };
+  }
 
   async function uploadImage(file: File) {
     setUploading(true);
     setError(null);
     try {
-      const body = new FormData();
-      body.append("file", file);
-      const response = await fetch("/api/admin/upload", { method: "POST", body });
-      const data = (await response.json().catch(() => null)) as {
-        url?: string;
-        fileId?: string;
-        message?: string;
-      } | null;
-      if (!response.ok || !data?.url) throw new Error(data?.message ?? "Gagal mengunggah gambar.");
+      const data = await kirimFoto(file);
       patch({ image_url: data.url, image_file_id: data.fileId ?? "" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal mengunggah gambar.");
     } finally {
       setUploading(false);
+    }
+  }
+
+  /** Aksi "Foto" pada baris: unggah lalu simpan ke resep itu juga. */
+  function pilihFotoBaris(row: MasterRow) {
+    targetUpload.current = row;
+    fileInput.current?.click();
+  }
+
+  async function padaFotoTerpilih(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    const row = targetUpload.current;
+    event.target.value = "";
+    if (!file || !row) return;
+    if (file.size > MAKS_FOTO_MB * 1024 * 1024) {
+      setError(`Ukuran gambar maksimal ${MAKS_FOTO_MB} MB.`);
+      return;
+    }
+    setUploading(true);
+    setError(null);
+    try {
+      const data = await kirimFoto(file);
+      await updateMutation.mutateAsync({
+        id: Number(row.id),
+        body: {
+          image_url: data.url,
+          image_file_id: data.fileId ?? null,
+          image_alt: String(row.image_alt ?? row.name ?? ""),
+        },
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal menyimpan foto menu.");
+    } finally {
+      setUploading(false);
+      targetUpload.current = null;
     }
   }
 
@@ -253,16 +301,41 @@ export function AdminRecipeManager() {
       ) : (listQuery.data ?? []).length === 0 ? (
         <p className="glass rounded-2xl px-4 py-6 text-center text-sm text-stone-500">Belum ada menu.</p>
       ) : (
-        <AdminTable headers={["Nama", "Kategori", "Porsi", "Komposisi", "Estimasi Biaya", "Aksi"]}>
+        <AdminTable
+          headers={["Foto", "Nama", "Kategori", "Porsi", "Komposisi", "Estimasi Biaya", "Aksi"]}
+          aligns={["center", "left", "left", "left", "left", "right", "right"]}
+        >
           {(listQuery.data ?? []).map((row) => (
             <tr key={String(row.id)} className="transition hover:bg-stone-50 dark:hover:bg-stone-800/40">
+              <AdminCell align="center">
+                {row.image_url ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setPreview({
+                        url: String(row.image_url),
+                        alt: String(row.image_alt ?? row.name ?? "Foto menu"),
+                      })
+                    }
+                    aria-label={`Lihat foto ${String(row.name)}`}
+                    className="mx-auto block overflow-hidden rounded-lg border border-stone-200 transition hover:ring-2 hover:ring-brand-400 dark:border-stone-700"
+                  >
+                    <img src={String(row.image_url)} alt="" loading="lazy" className="size-10 object-cover" />
+                  </button>
+                ) : (
+                  <span className="text-xs text-stone-400">Tidak ada</span>
+                )}
+              </AdminCell>
               <AdminCell className="font-medium">{String(row.name)}</AdminCell>
               <AdminCell><Badge tone="neutral">{String(row.category)}</Badge></AdminCell>
               <AdminCell>{String(row.servings)} porsi</AdminCell>
               <AdminCell>{((row.ingredients ?? []) as unknown[]).length} bahan</AdminCell>
-              <AdminCell>{formatRupiah(Number(row.estimated_cost ?? 0))}</AdminCell>
-              <AdminCell>
-                <div className="flex items-center justify-center gap-1">
+              <AdminCell align="right" className="tabular-nums">{formatRupiah(Number(row.estimated_cost ?? 0))}</AdminCell>
+              <AdminCell align="right">
+                <div className="flex items-center justify-end gap-1">
+                  <Button intent="ghost" size="sm" className="text-xs" onClick={() => pilihFotoBaris(row)} disabled={uploading}>
+                    <ImagePlus className="size-3.5" aria-hidden="true" /> Foto
+                  </Button>
                   <Button intent="ghost" size="sm" className="text-xs" onClick={() => openEdit(row)}>
                     <Pencil className="size-3.5" aria-hidden="true" /> Ubah
                   </Button>
@@ -327,9 +400,19 @@ export function AdminRecipeManager() {
                   disabled={uploading}
                   onChange={(event) => {
                     const file = event.target.files?.[0];
-                    if (file) void uploadImage(file);
+                    if (!file) return;
+                    if (file.size > MAKS_FOTO_MB * 1024 * 1024) {
+                      setError(`Ukuran gambar maksimal ${MAKS_FOTO_MB} MB.`);
+                      event.target.value = "";
+                      return;
+                    }
+                    void uploadImage(file);
                   }}
                 />
+                <p className="text-xs text-stone-500">
+                  JPG, PNG, atau WebP — maksimal {MAKS_FOTO_MB} MB. Isi berkas diperiksa di
+                  server, jadi ganti ekstensi saja tidak cukup.
+                </p>
                 <div className="flex items-center gap-3 text-xs">
                   {uploading ? <span className="text-stone-500">Mengunggah…</span> : null}
                   {form.image_url ? (
@@ -434,6 +517,32 @@ export function AdminRecipeManager() {
               <Button type="submit" intent="primary" loading={busy}>Simpan</Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Input tersembunyi untuk aksi "Foto" pada baris tabel. */}
+      <input
+        ref={fileInput}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        className="hidden"
+        onChange={(event) => void padaFotoTerpilih(event)}
+      />
+
+      <Dialog open={preview !== null} onOpenChange={(buka) => (buka ? null : setPreview(null))}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{preview?.alt ?? "Foto menu"}</DialogTitle>
+          </DialogHeader>
+          <div className="relative">
+            {preview ? (
+              <img
+                src={preview.url}
+                alt={preview.alt}
+                className="max-h-[60vh] w-full rounded-xl object-contain"
+              />
+            ) : null}
+          </div>
         </DialogContent>
       </Dialog>
     </div>

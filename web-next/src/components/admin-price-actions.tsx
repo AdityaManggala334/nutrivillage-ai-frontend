@@ -44,18 +44,9 @@ export function AdminPriceActions({ id, status }: AdminPriceActionsProps) {
     }
   };
 
+  // Status sudah tampil di kolomnya sendiri, jadi sel Aksi tidak mengulanginya.
   if (status !== "pending") {
-    return (
-      <span
-        className={
-          status === "approved"
-            ? "text-xs font-semibold text-brand-700"
-            : "text-xs font-semibold text-red-600"
-        }
-      >
-        {status === "approved" ? "Disetujui" : "Ditolak"}
-      </span>
-    );
+    return null;
   }
 
   return (

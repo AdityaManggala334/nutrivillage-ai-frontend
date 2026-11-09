@@ -9,6 +9,7 @@ import {
   AdminPageHeader,
   AdminStatusBadge,
   AdminTable,
+  type AdminAlign,
   type AdminStatus,
 } from "@/components/admin-table";
 import { Badge, Button, Dialog, DialogContent, DialogHeader, DialogTitle, FieldError, Input, Label, Select, Textarea } from "@/components/ui";
@@ -20,7 +21,7 @@ import {
   type MasterResource,
   type MasterRow,
 } from "@/hooks/use-master";
-import { formatDateId, formatRupiah } from "@/lib/utils";
+import { cn, formatDateId, formatRupiah } from "@/lib/utils";
 import type { FoodSafetyVerification, PriceStatus } from "@/schemas/admin";
 
 /* ------------------------------------------------------------------ */
@@ -68,7 +69,12 @@ type Field = {
 interface FlatConfig {
   readonly title: string;
   readonly description: string;
-  readonly columns: readonly { readonly header: string; readonly render: (row: MasterRow, ctx: Ctx) => ReactNode }[];
+  readonly columns: readonly {
+    readonly header: string;
+    readonly render: (row: MasterRow, ctx: Ctx) => ReactNode;
+    /** Perataan kolom ini; header ikut menyesuaikan supaya tidak bergeser. */
+    readonly align?: AdminAlign;
+  }[];
   readonly fields: readonly Field[];
   readonly empty: Record<string, unknown>;
   readonly idOf: (row: MasterRow) => number | string;
@@ -80,6 +86,25 @@ interface FlatConfig {
 
 function checkboxCell(value: unknown): ReactNode {
   return value ? <Badge tone="brand">Ya</Badge> : <span className="text-stone-400">Tidak</span>;
+}
+
+/** Asal data harga: nilai enum + keterangan bebas dari pengisi. */
+const SUMBER_LABEL: Record<string, { tone: "brand" | "harvest" | "info" | "neutral"; label: string }> = {
+  manual: { tone: "info", label: "Manual" },
+  scraper: { tone: "harvest", label: "Scraper" },
+  lapangan: { tone: "brand", label: "Lapangan" },
+};
+
+function SumberBadge({ value, note }: { readonly value: string; readonly note?: string }) {
+  const meta = SUMBER_LABEL[value] ?? { tone: "neutral" as const, label: value || "Tidak diketahui" };
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1.5">
+      <Badge tone={meta.tone}>{meta.label}</Badge>
+      {note && note.trim() !== "" ? (
+        <span className="text-xs text-stone-500 dark:text-stone-400">{note}</span>
+      ) : null}
+    </span>
+  );
 }
 
 const FLAT_CONFIG: Partial<Record<MasterResource, FlatConfig>> = {
@@ -149,15 +174,25 @@ const FLAT_CONFIG: Partial<Record<MasterResource, FlatConfig>> = {
     upsert: true,
     columns: [
       { header: "Bahan", render: (r, c) => c.ingredientName(r.ingredient_id) },
-      { header: "Kalori", render: (r) => `${r.calories ?? 0} kkal` },
-      { header: "Protein", render: (r) => `${r.protein ?? 0} g` },
-      { header: "Karbo", render: (r) => `${r.carbs ?? 0} g` },
-      { header: "Lemak", render: (r) => `${r.fat ?? 0} g` },
-      { header: "Serat", render: (r) => `${r.fiber ?? 0} g` },
-      { header: "Kalsium", render: (r) => `${r.calcium_mg ?? 0} mg` },
-      { header: "Besi", render: (r) => `${r.iron_mg ?? 0} mg` },
-      { header: "Vit A", render: (r) => `${r.vitamin_a_mcg ?? 0} µg` },
-      { header: "Vit C", render: (r) => `${r.vitamin_c_mg ?? 0} mg` },
+      { header: "Kalori", align: "right", render: (r) => <span className="tabular-nums">{Number(r.calories ?? 0)} kkal</span> },
+      { header: "Protein", align: "right", render: (r) => <span className="tabular-nums">{Number(r.protein ?? 0)} g</span> },
+      { header: "Karbo", align: "right", render: (r) => <span className="tabular-nums">{Number(r.carbs ?? 0)} g</span> },
+      { header: "Lemak", align: "right", render: (r) => <span className="tabular-nums">{Number(r.fat ?? 0)} g</span> },
+      { header: "Serat", align: "right", render: (r) => <span className="tabular-nums">{Number(r.fiber ?? 0)} g</span> },
+      {
+        header: "BDD",
+        align: "right",
+        render: (r) => {
+          const bdd = Number(r.bdd_percent ?? 100);
+          return (
+            <span className={cn("tabular-nums", bdd === 100 && "text-stone-400")}>{bdd}%</span>
+          );
+        },
+      },
+      { header: "Kalsium", align: "right", render: (r) => <span className="tabular-nums">{Number(r.calcium_mg ?? 0)} mg</span> },
+      { header: "Besi", align: "right", render: (r) => <span className="tabular-nums">{Number(r.iron_mg ?? 0)} mg</span> },
+      { header: "Vit A", align: "right", render: (r) => <span className="tabular-nums">{Number(r.vitamin_a_mcg ?? 0)} µg</span> },
+      { header: "Vit C", align: "right", render: (r) => <span className="tabular-nums">{Number(r.vitamin_c_mg ?? 0)} mg</span> },
     ],
     fields: [
       { name: "ingredient_id", label: "Bahan", type: "select", required: true, options: [] },
@@ -184,10 +219,14 @@ const FLAT_CONFIG: Partial<Record<MasterResource, FlatConfig>> = {
       "Data harga bahan. Masukkan harga manual atau hasil scraper, lalu verifikasi agar boleh dipakai Recommendation Engine.",
     columns: [
       { header: "Bahan", render: (r) => <span className="font-medium">{String(r.ingredient_name)}</span> },
-      { header: "Harga", render: (r) => `${formatRupiah(Number(r.price))} / ${String(r.unit)}` },
-      { header: "Sumber", render: (r) => String(r.source) },
+      {
+        header: "Harga",
+        align: "right",
+        render: (r) => <span className="tabular-nums">{formatRupiah(Number(r.price))} / {String(r.unit)}</span>,
+      },
+      { header: "Sumber", render: (r) => <SumberBadge value={String(r.source_type ?? "manual")} note={String(r.source ?? "")} /> },
       { header: "Tanggal", render: (r) => formatDateId(String(r.recorded_date)) },
-      { header: "Status", render: (r) => <AdminStatusBadge status={String(r.status) as AdminStatus} /> },
+      { header: "Status", align: "center", render: (r) => <AdminStatusBadge status={String(r.status) as AdminStatus} /> },
     ],
     fields: [
       { name: "ingredient_id", label: "Bahan", type: "select", required: true, options: [] },
@@ -225,6 +264,7 @@ const FLAT_CONFIG: Partial<Record<MasterResource, FlatConfig>> = {
       { header: "Jenis risiko", render: (r) => String(r.risk_type) },
       {
         header: "Status",
+        align: "center",
         render: (r) => (
           <Badge tone={r.verification === "verified" ? "brand" : r.verification === "rejected" ? "danger" : "harvest"}>
             {FOOD_SAFETY_VERIFICATION[String(r.verification)] ?? String(r.verification)}
@@ -492,18 +532,24 @@ export function AdminMasterManager({
           {listQuery.error instanceof Error ? listQuery.error.message : "Gagal memuat data."}
         </p>
       ) : (listQuery.data ?? []).length === 0 ? (
-        <p className="glass rounded-2xl px-4 py-6 text-center text-sm text-stone-500">
+        <p className="rounded-xl border border-dashed border-stone-300 px-4 py-8 text-center text-sm text-stone-500 dark:border-stone-700">
           Belum ada data. Klik <b>Tambah</b> untuk membuat.
         </p>
       ) : (
-        <AdminTable headers={[...(config?.columns.map((c) => c.header) ?? []), "Aksi"]}>
+        <AdminTable
+          headers={[...(config?.columns.map((c) => c.header) ?? []), "Aksi"]}
+          aligns={[...(config?.columns.map((c) => c.align ?? "left") ?? []), "right"]}
+          minWidth={`${Math.max(720, ((config?.columns.length ?? 0) + 1) * 112)}px`}
+        >
           {(listQuery.data ?? []).map((row) => (
             <tr key={String(config?.idOf(row))} className="transition hover:bg-stone-50 dark:hover:bg-stone-800/40">
               {config?.columns.map((col) => (
-                <AdminCell key={col.header}>{col.render(row, ctx)}</AdminCell>
+                <AdminCell key={col.header} align={col.align}>
+                  {col.render(row, ctx)}
+                </AdminCell>
               ))}
-              <AdminCell>
-                <div className="flex flex-wrap items-center justify-center gap-1">
+              <AdminCell align="right">
+                <div className="flex flex-wrap items-center justify-end gap-1">
                   {config?.extraActions ? config.extraActions(row, ctx) : null}
                   <Button intent="ghost" size="sm" className="text-xs" onClick={() => openEdit(row)}>
                     <Pencil className="size-3.5" aria-hidden="true" /> Ubah

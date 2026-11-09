@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { RegisterSchema } from "@/schemas/auth";
 import { registerUser } from "@/server/auth";
-import { jsonError, parseJsonBody } from "@/server/http";
+import { backendErrorResponse, parseJsonBody } from "@/server/http";
 
 /**
  * POST /api/auth/register — FR-01. Membuat akun TANPA auto-login.
@@ -26,6 +26,6 @@ export async function POST(request: Request): Promise<NextResponse> {
     // Sengaja tidak memasang cookie sesi: pengguna harus login sendiri.
     return NextResponse.json(session.user, { status: 201 });
   } catch (error) {
-    return jsonError(error instanceof Error ? error.message : "Gagal mendaftar", 409);
+    return backendErrorResponse(error);
   }
 }

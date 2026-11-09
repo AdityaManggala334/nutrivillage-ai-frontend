@@ -28,6 +28,8 @@ export function middleware(request: NextRequest): NextResponse {
   }
 
   // RBAC: hanya role admin yang boleh masuk /admin.
+  // Cookie role tidak ditandatangani, jadi ini hanya pengalih cepat; batas
+  // sebenarnya ada di (admin)/layout.tsx (verifikasi JWT) dan di backend.
   const isAdminRoute = pathname === "/admin" || pathname.startsWith("/admin/");
   if (isAdminRoute) {
     const role = request.cookies.get(ROLE_COOKIE)?.value;
@@ -41,6 +43,15 @@ export function middleware(request: NextRequest): NextResponse {
   if (isSppgRoute) {
     const role = request.cookies.get(ROLE_COOKIE)?.value;
     if (role !== "petugas_sppg" && role !== "admin") {
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
+  }
+
+  // RBAC: /lapangan hanya untuk petugas lapangan (admin boleh meninjau).
+  const isLapanganRoute = pathname === "/lapangan" || pathname.startsWith("/lapangan/");
+  if (isLapanganRoute) {
+    const role = request.cookies.get(ROLE_COOKIE)?.value;
+    if (role !== "petugas_lapangan" && role !== "admin") {
       return NextResponse.redirect(new URL("/dashboard", request.url));
     }
   }
@@ -64,5 +75,6 @@ export const config = {
     "/notifications/:path*",
     "/admin/:path*",
     "/sppg/:path*",
+    "/lapangan/:path*",
   ],
 };

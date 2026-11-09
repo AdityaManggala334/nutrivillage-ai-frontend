@@ -42,18 +42,9 @@ export function AdminFoodSafetyActions({ id, verification }: AdminFoodSafetyActi
     }
   };
 
+  // Kolom "Status" sudah menampilkan badge verifikasi, jadi sel Aksi tidak mengulang.
   if (verification !== "pending") {
-    return (
-      <span
-        className={
-          verification === "verified"
-            ? "text-xs font-semibold text-brand-700"
-            : "text-xs font-semibold text-red-600"
-        }
-      >
-        {verification === "verified" ? "Terverifikasi" : "Ditolak"}
-      </span>
-    );
+    return null;
   }
 
   return (

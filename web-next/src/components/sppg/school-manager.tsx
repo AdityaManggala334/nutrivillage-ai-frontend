@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Loader2, Pencil, Plus, School as SchoolIcon, Trash2 } from "lucide-react";
+import { ArrowRight, Pencil, Plus, School as SchoolIcon, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { EmptyState } from "@/components/empty-state";
@@ -377,13 +377,7 @@ export function SchoolManager() {
                 Batal
               </Button>
               <Button intent="danger" loading={deleteMutation.isPending} onClick={confirmDelete}>
-                {deleteMutation.isPending ? (
-                  <>
-                    <Loader2 className="size-4 animate-spin" aria-hidden="true" /> Menghapus…
-                  </>
-                ) : (
-                  "Hapus"
-                )}
+                Hapus
               </Button>
             </div>
           </DialogContent>

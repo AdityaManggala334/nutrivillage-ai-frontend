@@ -114,7 +114,9 @@ export function AuthForm() {
         ? "/admin"
         : session.user.role === "petugas_sppg"
           ? "/sppg/onboarding"
-          : "/onboarding";
+          : session.user.role === "petugas_lapangan"
+            ? "/lapangan"
+            : "/onboarding";
     window.location.assign(target);
   };
 

@@ -9,14 +9,21 @@ export function jsonError(message: string, status: number): NextResponse {
   return NextResponse.json({ message }, { status });
 }
 
-/** Memetakan error backend FastAPI ke respons Next.js. */
+/** Memetakan error backend FastAPI ke respons Next.js.
+ *
+ * Pesan 4xx backend sengaja diteruskan karena memang ditulis untuk pengguna
+ * ("Email sudah terdaftar", dsb.). Pesan 5xx dan error tak terduga TIDAK
+ * diteruskan: isinya bisa memuat detail internal (S-06/T-06).
+ */
 export function backendErrorResponse(error: unknown): NextResponse {
   if (error instanceof BackendError) {
+    if (error.status >= 500) {
+      console.error("[backend] gagal:", error.status, error.message);
+      return jsonError("Layanan sedang tidak tersedia. Coba lagi sebentar.", 502);
+    }
     return jsonError(error.message, error.status);
   }
-  if (error instanceof Error) {
-    return jsonError(error.message, 500);
-  }
+  console.error("[backend] error tak terduga:", error);
   return jsonError("Terjadi kesalahan tak terduga.", 500);
 }
 
@@ -48,11 +55,40 @@ type ParseResult<T> =
   | { readonly ok: true; readonly data: T }
   | { readonly ok: false; readonly response: NextResponse };
 
+/** Batas ukuran body JSON (1 MB) untuk route yang meneruskan body apa adanya. */
+export const MAX_BODY_BYTES = 1_000_000;
+
+/** Baca body JSON tanpa skema Zod, dengan batas ukuran (T-05). */
+export async function readJsonBody(
+  request: Request,
+  maxBytes: number = MAX_BODY_BYTES,
+): Promise<{ ok: true; data: unknown } | { ok: false; response: NextResponse }> {
+  const panjang = Number(request.headers.get("content-length") ?? "0");
+  if (panjang > maxBytes) {
+    return { ok: false, response: jsonError("Ukuran data melebihi batas.", 413) };
+  }
+  let data: unknown;
+  try {
+    data = await request.json();
+  } catch {
+    return { ok: false, response: jsonError("Body JSON tidak valid.", 400) };
+  }
+  if (data === null || typeof data !== "object") {
+    return { ok: false, response: jsonError("Body harus berupa objek JSON.", 422) };
+  }
+  return { ok: true, data };
+}
+
 /** Memvalidasi body JSON dengan skema Zod sebelum masuk logika server. */
 export async function parseJsonBody<T>(
   request: Request,
   schema: z.ZodType<T>,
 ): Promise<ParseResult<T>> {
+  const panjang = Number(request.headers.get("content-length") ?? "0");
+  if (panjang > MAX_BODY_BYTES) {
+    return { ok: false, response: jsonError("Ukuran data melebihi batas.", 413) };
+  }
+
   let raw: unknown;
   try {
     raw = await request.json();

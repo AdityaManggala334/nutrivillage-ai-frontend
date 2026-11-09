@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Loader2, Pencil, Plus, Trash2, Users } from "lucide-react";
+import { ArrowLeft, Pencil, Plus, Trash2, Users } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { EmptyState } from "@/components/empty-state";
@@ -416,13 +416,7 @@ export function SchoolDetail({ schoolId }: { schoolId: number }) {
                 Batal
               </Button>
               <Button intent="danger" loading={deleteMutation.isPending} onClick={confirmDelete}>
-                {deleteMutation.isPending ? (
-                  <>
-                    <Loader2 className="size-4 animate-spin" aria-hidden="true" /> Menghapus…
-                  </>
-                ) : (
-                  "Hapus"
-                )}
+                Hapus
               </Button>
             </div>
           </DialogContent>

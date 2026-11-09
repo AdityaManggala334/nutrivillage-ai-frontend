@@ -5,7 +5,7 @@ import {
   backendAdminList,
   type AdminMasterResource,
 } from "@/server/backend-api";
-import { backendErrorResponse, jsonError } from "@/server/http";
+import { backendErrorResponse, jsonError, readJsonBody } from "@/server/http";
 
 export const dynamic = "force-dynamic";
 
@@ -38,14 +38,6 @@ function resolveResource(raw: string): AdminMasterResource | null {
   return RESOURCES.has(raw) ? (raw as AdminMasterResource) : null;
 }
 
-async function readBody(request: Request): Promise<unknown> {
-  try {
-    return await request.json();
-  } catch {
-    return null;
-  }
-}
-
 /** GET /api/admin/[resource] — daftar data master (khusus admin). */
 export async function GET(request: Request, context: RouteContext): Promise<NextResponse> {
   const guard = requireAdmin(request);
@@ -68,11 +60,11 @@ export async function POST(request: Request, context: RouteContext): Promise<Nex
   const { resource } = await context.params;
   const resolved = resolveResource(resource);
   if (!resolved) return jsonError("Resource tidak dikenal.", 404);
-  const body = await readBody(request);
-  if (body === null) return jsonError("Body JSON tidak valid.", 400);
+  const parsed = await readJsonBody(request);
+  if (!parsed.ok) return parsed.response;
   try {
     const token = getSessionToken(request) as string;
-    return NextResponse.json(await backendAdminCreate(token, resolved, body), { status: 201 });
+    return NextResponse.json(await backendAdminCreate(token, resolved, parsed.data), { status: 201 });
   } catch (error) {
     return backendErrorResponse(error);
   }

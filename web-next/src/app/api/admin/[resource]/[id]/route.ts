@@ -6,7 +6,7 @@ import {
   backendAdminUpdate,
   type AdminMasterResource,
 } from "@/server/backend-api";
-import { backendErrorResponse, jsonError } from "@/server/http";
+import { backendErrorResponse, jsonError, readJsonBody } from "@/server/http";
 
 export const dynamic = "force-dynamic";
 
@@ -39,14 +39,6 @@ function resolveResource(raw: string): AdminMasterResource | null {
   return RESOURCES.has(raw) ? (raw as AdminMasterResource) : null;
 }
 
-async function readBody(request: Request): Promise<unknown> {
-  try {
-    return await request.json();
-  } catch {
-    return null;
-  }
-}
-
 /** PATCH /api/admin/[resource]/[id] — ubah sebagian data master. */
 export async function PATCH(request: Request, context: RouteContext): Promise<NextResponse> {
   const guard = requireAdmin(request);
@@ -54,11 +46,11 @@ export async function PATCH(request: Request, context: RouteContext): Promise<Ne
   const { resource, id } = await context.params;
   const resolved = resolveResource(resource);
   if (!resolved) return jsonError("Resource tidak dikenal.", 404);
-  const body = await readBody(request);
-  if (body === null) return jsonError("Body JSON tidak valid.", 400);
+  const parsed = await readJsonBody(request);
+  if (!parsed.ok) return parsed.response;
   try {
     const token = getSessionToken(request) as string;
-    return NextResponse.json(await backendAdminUpdate(token, resolved, id, body));
+    return NextResponse.json(await backendAdminUpdate(token, resolved, id, parsed.data));
   } catch (error) {
     return backendErrorResponse(error);
   }
@@ -71,11 +63,11 @@ export async function PUT(request: Request, context: RouteContext): Promise<Next
   const { resource, id } = await context.params;
   const resolved = resolveResource(resource);
   if (!resolved) return jsonError("Resource tidak dikenal.", 404);
-  const body = await readBody(request);
-  if (body === null) return jsonError("Body JSON tidak valid.", 400);
+  const parsed = await readJsonBody(request);
+  if (!parsed.ok) return parsed.response;
   try {
     const token = getSessionToken(request) as string;
-    return NextResponse.json(await backendAdminReplace(token, resolved, id, body));
+    return NextResponse.json(await backendAdminReplace(token, resolved, id, parsed.data));
   } catch (error) {
     return backendErrorResponse(error);
   }

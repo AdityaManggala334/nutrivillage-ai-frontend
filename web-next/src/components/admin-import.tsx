@@ -5,6 +5,12 @@ import { useState } from "react";
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label, Select } from "@/components/ui";
 
 /** FR-30: admin mengunggah CSV dataset (pratinjau lalu terapkan). */
+
+// Cerminan konstanta backend (app/services/dataset_import.py). Backend tetap
+// yang memutuskan; angka ini hanya supaya batas terlihat sebelum mencoba.
+const MAKS_MB = 10;
+const MAKS_JUMLAH = 7;
+
 export function AdminImport() {
   const [region, setRegion] = useState("Kabupaten Madiun");
   const [files, setFiles] = useState<FileList | null>(null);
@@ -17,12 +23,25 @@ export function AdminImport() {
       setError("Pilih berkas CSV dataset terlebih dahulu.");
       return;
     }
+    const daftar = Array.from(files);
+    if (daftar.length > MAKS_JUMLAH) {
+      setError(`Maksimal ${MAKS_JUMLAH} berkas per unggahan. Sekarang ${daftar.length}.`);
+      return;
+    }
+    const terlalu = daftar.filter((f) => f.size > MAKS_MB * 1024 * 1024);
+    if (terlalu.length > 0) {
+      setError(
+        `Berkas melebihi ${MAKS_MB} MB: ${terlalu.map((f) => f.name).join(", ")}. ` +
+          "Pecah datasetnya sebelum mengimpor.",
+      );
+      return;
+    }
     setLoading(terapkan ? "apply" : "preview");
     setError(null);
     setReport(null);
     try {
       const body = new FormData();
-      for (const file of Array.from(files)) body.append("berkas", file);
+      for (const file of daftar) body.append("berkas", file);
       body.append("region", region);
       body.append("terapkan", String(terapkan));
       const response = await fetch("/api/admin/import", { method: "POST", body });
@@ -48,10 +67,14 @@ export function AdminImport() {
           <div className="space-y-1.5">
             <Label htmlFor="impor-region">Wilayah data</Label>
             <Select id="impor-region" value={region} onChange={(event) => setRegion(event.target.value)}>
-              <option>Kabupaten Madiun</option>
-              <option>Kota Madiun</option>
-              <option>Kabupaten Tangerang</option>
+              <option value="Kabupaten Madiun">Kabupaten Madiun</option>
+              <option value="Kota Madiun">Kota Madiun</option>
+              <option value="Luar Daerah">Lainnya (luar wilayah Madiun)</option>
             </Select>
+            <p className="text-xs text-stone-500">
+              Data di luar Kabupaten/Kota Madiun masuk sebagai wilayah{" "}
+              <b>Luar Daerah</b>, bukan nama baru, agar daftar wilayah tetap rapi.
+            </p>
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="impor-files">Berkas CSV</Label>
@@ -63,7 +86,8 @@ export function AdminImport() {
               onChange={(event) => setFiles(event.target.files)}
             />
             <p className="text-xs text-stone-500">
-              Pilih berkas 01 sampai 07 sekaligus. Berkas 08/09/11 diabaikan.
+              Pilih berkas 01 sampai 07 sekaligus (maks {MAKS_JUMLAH} berkas, {MAKS_MB} MB
+              per berkas). Berkas 08/09/11 diabaikan.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">

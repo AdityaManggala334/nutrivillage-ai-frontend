@@ -92,6 +92,10 @@ async function fetchWithRetry(url: string, init: RequestInit): Promise<Response>
     }
 
     if (response && !RETRYABLE_STATUS.has(response.status)) return response;
+    // 429 dari pembatas laju login/registrasi adalah pesan yang harus dibaca
+    // pengguna sekarang; mengulanginya diam-diam hanya menyembunyikan penyebab
+    // dan menambah beban saat server sedang membatasi permintaan.
+    if (response?.status === 429 && /\/auth\/(login|register)$/.test(url)) return response;
     if (response && attempt === FETCH_ATTEMPTS) return response;
 
     const wait =
@@ -230,6 +234,21 @@ export async function backendLogin(input: {
     body: JSON.stringify({ email: input.email, password: input.password }),
   });
   return toSession(payload);
+}
+
+/**
+ * Cabut sesi di backend saat logout.
+ *
+ * Tanpa ini, access token yang sudah terlanjur keluar tetap berlaku sampai 8
+ * jam setelah pengguna menekan Keluar. `all_devices` menaikkan token_version
+ * sehingga token lama ditolak segera dan refresh token ikut dicabut.
+ */
+export async function backendLogout(token: string): Promise<void> {
+  await backendFetch<{ ok: boolean }>(
+    "/auth/logout",
+    { method: "POST", body: JSON.stringify({ all_devices: true }) },
+    token,
+  );
 }
 
 export async function backendUserCount(token: string): Promise<number> {
@@ -1176,3 +1195,68 @@ export async function backendSppgRecommendation(
   });
 }
 
+
+
+/* ------------------------------------------------------------------ */
+/* FR-23 perluasan: input harga oleh Petugas Lapangan                  */
+/* ------------------------------------------------------------------ */
+export interface BackendFieldIngredient {
+  readonly id: number;
+  readonly name: string;
+  readonly unit: string;
+  readonly category: string;
+}
+
+export interface BackendFieldPrice {
+  readonly id: number;
+  readonly ingredient_id: number;
+  readonly ingredient_name: string;
+  readonly region_id: number | null;
+  readonly price: number;
+  readonly unit: string;
+  readonly recorded_date: string;
+  readonly source: string;
+  readonly status: string;
+  readonly created_at: string;
+  readonly created_by: number | null;
+}
+
+export interface BackendFieldCreateInput {
+  readonly ingredient_id: number;
+  readonly price: number;
+  readonly unit: string;
+  readonly source: string;
+  readonly recorded_date?: string;
+  readonly region_id?: number | null;
+}
+
+/** Bahan yang bisa dipilih petugas (baca saja). */
+export async function backendFieldIngredients(token: string): Promise<BackendFieldIngredient[]> {
+  return backendFetch<BackendFieldIngredient[]>("/field/ingredients", { method: "GET" }, token);
+}
+
+/** Kiriman milik petugas ini (admin melihat semua). */
+export async function backendFieldPrices(
+  token: string,
+  statusFilter?: string,
+): Promise<BackendFieldPrice[]> {
+  const query = statusFilter ? `?status_filter=${encodeURIComponent(statusFilter)}` : "";
+  return backendFetch<BackendFieldPrice[]>(`/field/prices${query}`, { method: "GET" }, token);
+}
+
+/** Catat harga dari pasar. Status & sumber ditetapkan server. */
+export async function backendFieldCreatePrice(
+  token: string,
+  input: BackendFieldCreateInput,
+): Promise<BackendFieldPrice> {
+  return backendFetch<BackendFieldPrice>(
+    "/field/prices",
+    { method: "POST", body: JSON.stringify(input) },
+    token,
+  );
+}
+
+/** Tarik kiriman sendiri selama masih pending. */
+export async function backendFieldDeletePrice(token: string, id: number): Promise<void> {
+  await backendFetch<void>(`/field/prices/${id}`, { method: "DELETE" }, token);
+}

@@ -22,24 +22,41 @@ export function AdminPageHeader({
   );
 }
 
+export type AdminAlign = "left" | "center" | "right";
+
+const ALIGN_CLASS: Record<AdminAlign, string> = {
+  left: "text-left",
+  center: "text-center",
+  right: "text-right",
+};
+
 export function AdminTable({
   headers,
+  aligns,
+  minWidth = "720px",
   children,
 }: {
   readonly headers: readonly string[];
+  /** Perataan per kolom; dipakai header DAN sel agar tidak saling geser. */
+  readonly aligns?: readonly AdminAlign[];
+  /** Lebar minimum tabel sebelum digulir horizontal. */
+  readonly minWidth?: string;
   readonly children: ReactNode;
 }) {
   return (
-    <div className="glass overflow-hidden rounded-2xl">
+    <div className="overflow-hidden rounded-xl border border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[720px] text-sm">
+        <table className="w-full text-sm" style={{ minWidth }}>
           <thead className="border-b border-stone-200 bg-stone-50 dark:border-stone-800 dark:bg-stone-800/50">
             <tr>
-              {headers.map((head) => (
+              {headers.map((head, i) => (
                 <th
                   key={head}
                   scope="col"
-                  className="border-r border-stone-200 px-4 py-3 text-center text-xs font-semibold tracking-wide text-stone-500 uppercase last:border-r-0 dark:border-stone-700 dark:text-stone-400"
+                  className={cn(
+                    "px-4 py-3 text-xs font-semibold tracking-wide text-stone-500 uppercase dark:text-stone-400",
+                    ALIGN_CLASS[aligns?.[i] ?? "left"],
+                  )}
                 >
                   {head}
                 </th>
@@ -53,12 +70,6 @@ export function AdminTable({
   );
 }
 
-const ALIGN_CLASS: Record<"left" | "center" | "right", string> = {
-  left: "text-left",
-  center: "text-center",
-  right: "text-right",
-};
-
 export function AdminCell({
   children,
   className,
@@ -66,13 +77,13 @@ export function AdminCell({
 }: {
   readonly children: ReactNode;
   readonly className?: string;
-  /** Perataan isi kolom. Default: kiri (header tetap tengah). */
-  readonly align?: "left" | "center" | "right";
+  /** Samakan dengan `aligns` pada AdminTable. Default: kiri. */
+  readonly align?: AdminAlign;
 }) {
   return (
     <td
       className={cn(
-        "border-r border-stone-100 px-4 py-3 align-middle text-stone-700 last:border-r-0 dark:border-stone-800 dark:text-stone-200",
+        "px-4 py-3 align-middle text-stone-700 dark:text-stone-200",
         ALIGN_CLASS[align],
         className,
       )}

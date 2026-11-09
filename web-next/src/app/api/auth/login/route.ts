@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { LoginSchema } from "@/schemas/auth";
 import { authenticateUser } from "@/server/auth";
-import { jsonError, parseJsonBody, setSessionCookies } from "@/server/http";
+import { backendErrorResponse, parseJsonBody, setSessionCookies } from "@/server/http";
 
 /** POST /api/auth/login — FR-02. Menulis cookie session + role (RBAC). */
 export async function POST(request: Request): Promise<NextResponse> {
@@ -12,6 +12,8 @@ export async function POST(request: Request): Promise<NextResponse> {
     const session = await authenticateUser(parsed.data);
     return setSessionCookies(NextResponse.json(session), session, 60 * 60 * 8);
   } catch (error) {
-    return jsonError(error instanceof Error ? error.message : "Gagal masuk", 401);
+    // Status asli dipertahankan agar 429 (kuota login) dan 403 (akun nonaktif)
+    // tidak menyamar menjadi 401 "email atau password salah".
+    return backendErrorResponse(error);
   }
 }

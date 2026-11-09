@@ -95,9 +95,24 @@ const SPPG_NAV: readonly NavGroup[] = [
   },
 ];
 
+const LAPANGAN_NAV: readonly NavGroup[] = [
+  {
+    title: "Survei Pasar",
+    links: [
+      { label: "Input Harga", href: "/lapangan", icon: ShoppingCart },
+      { label: "Kiriman Saya", href: "/lapangan/kiriman", icon: Bell },
+    ],
+  },
+  {
+    title: "Akun",
+    links: [{ label: "Profil", href: "/profile", icon: Settings }],
+  },
+];
+
 const ROLE_LABEL: Readonly<Record<string, string>> = {
   user: "Masyarakat",
   petugas_sppg: "Petugas SPPG",
+  petugas_lapangan: "Petugas Lapangan",
   admin: "Admin",
   guest: "Tamu",
 };
@@ -201,7 +216,12 @@ export function DashboardSidebar() {
         </div>
 
         <nav className="flex-1 overflow-y-auto px-4 py-4">
-          {(user?.role === "petugas_sppg" ? SPPG_NAV : FAMILY_NAV).map((group) => (
+          {(user?.role === "petugas_sppg"
+            ? SPPG_NAV
+            : user?.role === "petugas_lapangan"
+              ? LAPANGAN_NAV
+              : FAMILY_NAV
+          ).map((group) => (
             <NavSection key={group.title} title={group.title} links={group.links} />
           ))}
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, CalendarCheck, Loader2, School, Users } from "lucide-react";
+import { Building2, CalendarCheck, School, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { SchoolLevelCounts } from "@/components/sppg/school-level-counts";
@@ -204,13 +204,7 @@ export function SppgOnboarding() {
                 Lewati untuk sekarang
               </Button>
               <Button type="submit" loading={createMutation.isPending}>
-                {createMutation.isPending ? (
-                  <>
-                    <Loader2 className="size-4 animate-spin" aria-hidden="true" /> Menyimpan…
-                  </>
-                ) : (
-                  `Simpan & Mulai (${totalFromCounts(counts)} siswa)`
-                )}
+                {`Simpan & Mulai (${totalFromCounts(counts)} siswa)`}
               </Button>
             </div>
           </form>

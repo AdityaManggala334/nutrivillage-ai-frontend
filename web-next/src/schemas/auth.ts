@@ -76,7 +76,13 @@ export const RegisterSchema = z
 export type LoginInput = z.infer<typeof LoginSchema>;
 export type RegisterInput = z.infer<typeof RegisterSchema>;
 
-export const UserRoleSchema = z.enum(["user", "petugas_sppg", "admin", "guest"]);
+export const UserRoleSchema = z.enum([
+  "user",
+  "petugas_sppg",
+  "petugas_lapangan",
+  "admin",
+  "guest",
+]);
 
 export const SppgOfficerSchema = z.object({
   nip: z.string().min(1),

@@ -5,6 +5,22 @@ import type {
   RecommendationGoal,
 } from "@/schemas/domain";
 
+/** Nama bulan indeks 0 = Januari. Dipakai halaman Data Musim. */
+export const MONTH_LABELS: readonly string[] = [
+  "Januari",
+  "Februari",
+  "Maret",
+  "April",
+  "Mei",
+  "Juni",
+  "Juli",
+  "Agustus",
+  "September",
+  "Oktober",
+  "November",
+  "Desember",
+];
+
 export const AGE_GROUP_ORDER: readonly AgeGroup[] = [
   "balita",
   "anak",
@@ -95,4 +111,5 @@ export const PROTECTED_ROUTES = [
   "/onboarding",
   "/admin",
   "/sppg",
+  "/lapangan",
 ] as const;

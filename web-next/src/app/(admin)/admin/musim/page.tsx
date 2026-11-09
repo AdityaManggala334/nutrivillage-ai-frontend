@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-import { AdminMasterManager } from "@/components/admin-master-manager";
+import { AdminSeasons } from "@/components/admin-seasons";
 
 export const metadata: Metadata = {
   title: "Data Musim",
   robots: { index: false, follow: false },
 };
 
-/** FR-31: CRUD ketersediaan musiman per bahan per bulan. */
+/** FR-31: ketersediaan musiman per bahan, ditampilkan & disimpan sebagai rentang bulan. */
 export default function AdminSeasonsPage() {
-  return <AdminMasterManager resource="seasons" />;
+  return <AdminSeasons />;
 }

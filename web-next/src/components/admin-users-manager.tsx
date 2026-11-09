@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Pencil, Plus, Search, ShieldCheck, Users } from "lucide-react";
+import { Pencil, Plus, Search, ShieldCheck, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 import {
   Badge,
@@ -27,10 +27,12 @@ import {
   type AdminUser,
   type AdminUserCreateBody,
 } from "@/schemas/admin";
+import type { UserRole } from "@/schemas/auth";
 
 const ROLE_LABELS: Readonly<Record<string, string>> = {
   user: "Masyarakat",
   petugas_sppg: "Petugas SPPG",
+  petugas_lapangan: "Petugas Lapangan",
   admin: "Admin",
   guest: "Tamu",
 };
@@ -38,16 +40,18 @@ const ROLE_LABELS: Readonly<Record<string, string>> = {
 const ROLE_TONE: Readonly<Record<string, "brand" | "harvest" | "info" | "neutral">> = {
   user: "brand",
   petugas_sppg: "harvest",
+  petugas_lapangan: "harvest",
   admin: "info",
   guest: "neutral",
 };
 
-type Filter = "all" | "user" | "petugas_sppg" | "admin";
+type Filter = "all" | "user" | "petugas_sppg" | "petugas_lapangan" | "admin";
 
 const FILTERS: ReadonlyArray<{ value: Filter; label: string }> = [
   { value: "all", label: "Semua" },
   { value: "user", label: "Masyarakat" },
   { value: "petugas_sppg", label: "Petugas SPPG" },
+  { value: "petugas_lapangan", label: "Petugas Lapangan" },
   { value: "admin", label: "Admin" },
 ];
 
@@ -78,8 +82,14 @@ function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
   const [name, setName] = useState(user?.name ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"user" | "petugas_sppg" | "admin">(
-    (user?.role === "guest" ? "user" : user?.role) ?? "user",
+  // "guest" tidak bisa dipilih admin dari form ini, jadi dikeluarkan dari tipe.
+  const [role, setRole] = useState<Exclude<UserRole, "guest">>(
+    user?.role === "petugas_lapangan" ||
+      user?.role === "petugas_sppg" ||
+      user?.role === "admin" ||
+      user?.role === "user"
+      ? user.role
+      : "user",
   );
   const [isActive, setIsActive] = useState(user?.isActive ?? true);
   const [nip, setNip] = useState(user?.sppgOfficer?.nip ?? "");
@@ -199,10 +209,13 @@ function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
               <Select
                 id="au-role"
                 value={role}
-                onChange={(event) => setRole(event.target.value as "user" | "petugas_sppg" | "admin")}
+                onChange={(event) =>
+                  setRole(event.target.value as Exclude<UserRole, "guest">)
+                }
               >
                 <option value="user">Masyarakat</option>
                 <option value="petugas_sppg">Petugas SPPG</option>
+                <option value="petugas_lapangan">Petugas Lapangan</option>
                 <option value="admin">Admin</option>
               </Select>
             </div>
@@ -250,15 +263,7 @@ function UserDialog({ open, onOpenChange, user }: UserDialogProps) {
               </Button>
             </DialogClose>
             <Button type="submit" loading={pending}>
-              {pending ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" aria-hidden="true" /> Menyimpan…
-                </>
-              ) : isEdit ? (
-                "Simpan Perubahan"
-              ) : (
-                "Buat Akun"
-              )}
+              {isEdit ? "Simpan Perubahan" : "Buat Akun"}
             </Button>
           </div>
         </form>

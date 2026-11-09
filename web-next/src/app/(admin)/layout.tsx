@@ -1,23 +1,27 @@
-import { Leaf, ShieldCheck } from "lucide-react";
+import { Leaf } from "lucide-react";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { AdminNav } from "@/components/admin-nav";
 import { AdminTopbar } from "@/components/admin-topbar";
-import { ROLE_COOKIE, SESSION_COOKIE } from "@/lib/constants";
+import { SESSION_COOKIE } from "@/lib/constants";
+import { getUserByToken } from "@/server/auth";
 
 /**
  * Nested layout sisi Admin (FR-22 s.d. FR-34). Terpisah dari layout pengguna
  * karena alur admin berada di luar alur utama pengguna (SKPL BAB VII).
  */
 export default async function AdminLayout({ children }: { children: ReactNode }) {
-  // RBAC: panel admin hanya untuk role admin. Pengguna biasa dialihkan ke dashboard.
+  // RBAC: panel admin hanya untuk role admin. Role dibaca dari sesi yang
+  // tandatangan JWT-nya sudah diverifikasi, bukan dari cookie ROLE yang tidak
+  // ditandatangani (S-01) — cookie itu hanya petunjuk untuk middleware.
   const cookieStore = await cookies();
   const session = cookieStore.get(SESSION_COOKIE)?.value;
-  const role = cookieStore.get(ROLE_COOKIE)?.value;
   if (!session) redirect("/login?redirect=/admin&auth_error=1");
-  if (role !== "admin") redirect("/dashboard");
+  const user = getUserByToken(session);
+  if (!user) redirect("/login?redirect=/admin&auth_error=1");
+  if (user.role !== "admin") redirect("/dashboard");
 
   return (
     <div className="relative isolate min-h-screen bg-stone-100 dark:bg-stone-950">
@@ -40,13 +44,6 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           <nav className="flex-1 overflow-y-auto" aria-label="Navigasi admin">
             <AdminNav />
           </nav>
-
-          <div className="mt-4 rounded-xl bg-stone-800/70 p-3 text-[11px] leading-relaxed text-stone-400">
-            <p className="flex items-center gap-1.5 font-semibold text-stone-200">
-              <ShieldCheck className="size-3.5" aria-hidden="true" /> Mode Demo
-            </p>
-            <p className="mt-1">Data master bersifat tiruan untuk keperluan praktikum.</p>
-          </div>
         </aside>
 
         <div className="min-w-0 flex-1">
