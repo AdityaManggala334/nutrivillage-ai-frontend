@@ -1122,8 +1122,13 @@ export interface BackendMealPlan {
   readonly peringatan: string[];
   readonly penyesuaian: string[];
   readonly variasi: number;
+  // B5 (infeasible yang informatif): alasan, saran, minimum dibutuhkan, dan
+  // slot yang ditinggalkan dikirim ke UI supaya pengguna tahu apa yang harus
+  // dilakukan, bukan sekadar "belum bisa disusun".
   readonly alasan?: string | null;
   readonly saran?: string | null;
+  readonly minimum_dibutuhkan?: number | null;
+  readonly slot_ditinggalkan?: string[] | null;
 }
 
 export interface BackendFamilyResult {
