@@ -47,6 +47,11 @@ function toMealPlan(plan: BackendMealPlan): MealPlan {
     status: plan.status,
     reason: plan.alasan ?? null,
     suggestion: plan.saran ?? null,
+    // B5 (infeasible yang informatif): saran, slot yang ditinggalkan, dan
+    // minimum yang dibutuhkan ikut ditampilkan ke pengguna.
+    warnings: plan.peringatan ?? [],
+    minimumDibutuhkan: plan.minimum_dibutuhkan ?? null,
+    slotDitinggalkan: plan.slot_ditinggalkan ?? [],
     budgetPerPortion: plan.anggaran_per_porsi,
     dailyBudget: plan.anggaran_harian,
     totalDailyCost: plan.total_biaya_harian,
@@ -113,7 +118,6 @@ function toMealPlan(plan: BackendMealPlan): MealPlan {
       },
     })),
     snacks,
-    warnings: plan.peringatan,
     adjustments: plan.penyesuaian,
     shopping: [],
   });

@@ -65,6 +65,10 @@ export const MealPlanSchema = z.object({
   status: z.enum(["ok", "infeasible"]),
   reason: z.string().nullable(),
   suggestion: z.string().nullable(),
+  // B5: detail penjelasan infeasible (butuh angka + slot yang ditinggalkan).
+  minimumDibutuhkan: z.number().nullable().optional(),
+  slotDitinggalkan: z.array(z.string()).optional(),
+  warnings: z.array(z.string()),
   budgetPerPortion: z.number().nonnegative(),
   dailyBudget: z.number().nonnegative(),
   totalDailyCost: z.number().nonnegative(),
@@ -96,7 +100,6 @@ export const MealPlanSchema = z.object({
       protein: z.number().nonnegative(),
     }),
   ),
-  warnings: z.array(z.string()),
   adjustments: z.array(z.string()),
   shopping: z.array(
     z.object({
