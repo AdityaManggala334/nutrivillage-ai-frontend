@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google";
+import { DM_Sans, Plus_Jakarta_Sans, Playfair_Display } from "next/font/google";
 import { Providers } from "@/components/providers";
 import { ThemeScript } from "@/components/theme-script";
 import "./globals.css";
@@ -9,6 +9,21 @@ const plusJakarta = Plus_Jakarta_Sans({
   variable: "--font-plus-jakarta",
   display: "swap",
   weight: ["400", "500", "600", "700", "800"],
+});
+
+/* Font editorial landing redesign: Playfair Display (heading) + DM Sans (body). */
+const playfair = Playfair_Display({
+  subsets: ["latin"],
+  variable: "--font-playfair",
+  display: "swap",
+  weight: ["400", "500", "600", "700", "800"],
+});
+
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  variable: "--font-dm-sans",
+  display: "swap",
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -63,7 +78,9 @@ export default function RootLayout({
       <head>
         <ThemeScript />
       </head>
-      <body className={`${plusJakarta.variable} min-h-screen font-sans`}>
+      <body
+        className={`${plusJakarta.variable} ${playfair.variable} ${dmSans.variable} min-h-screen font-sans`}
+      >
         <Providers>
           <a
             href="#konten-utama"

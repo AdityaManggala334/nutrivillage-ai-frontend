@@ -11,6 +11,22 @@
 @theme {
   --font-sans: var(--font-plus-jakarta), "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-editorial: var(--font-playfair), "Georgia", serif;
+  --font-body: var(--font-dm-sans), var(--font-plus-jakarta), "Segoe UI", sans-serif;
+  /* Palet editorial premium landing (SKLP Redesign) — di-scope ke landing via class. */
+  --color-forest: #073d30;
+  --color-forest-deep: #092b24;
+  --color-emerald-brand: #078b68;
+  --color-cream: #f4f0e5;
+  --color-gold: #d7b56d;
+  /* Warm terracotta edition (draft landing-v2) */
+  --color-tc-terracotta: #b85c38;
+  --color-tc-terracotta-deep: #873f2c;
+  --color-tc-cream: #f7f2e9;
+  --color-tc-beige: #e9d8c5;
+  --color-tc-charcoal: #292522;
+  --color-tc-brown: #76665c;
+  --color-tc-white: #fffdf9;
 
   --color-brand-50: #ecfdf5;
   --color-brand-100: #d1fae5;
@@ -420,4 +436,172 @@
   .animate-mesh {
     animation: none !important;
   }
+}
+
+/* ------------------------------------------------------------------ */
+/* Landing editorial premium (redesign) - token lapis komponen.         */
+/* Di-scope di bawah .landing-editorial agar tidak memengaruhi halaman  */
+/* lain yang masih memakai tema Fresh Digital Food-Tech.                */
+/* ------------------------------------------------------------------ */
+@layer components {
+  .landing-editorial {
+    background-color: var(--color-forest-deep);
+    color: var(--color-cream);
+    font-family: var(--font-body);
+  }
+  .landing-editorial h1,
+  .landing-editorial h2,
+  .landing-editorial h3 {
+    font-family: var(--font-editorial);
+    color: var(--color-cream);
+    letter-spacing: -0.01em;
+  }
+  .landing-editorial ::selection {
+    background: var(--color-gold);
+    color: var(--color-forest-deep);
+  }
+  .landing-eyebrow {
+    font-family: var(--font-body);
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--color-gold);
+  }
+  .landing-container {
+    margin-inline: auto;
+    width: 100%;
+    max-width: 76rem;
+    padding-inline: 1.25rem;
+  }
+  @media (min-width: 640px) {
+    .landing-container { padding-inline: 2rem; }
+  }
+  .landing-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 9999px;
+    font-weight: 600;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+    min-height: 3rem;
+    padding-inline: 1.75rem;
+  }
+  .landing-btn:active { transform: scale(0.97); }
+  .landing-btn-solid {
+    background: var(--color-emerald-brand);
+    color: #ffffff;
+  }
+  .landing-btn-solid:hover { background: #06a179; }
+  .landing-btn-outline {
+    border: 1px solid rgb(244 240 229 / 0.4);
+    color: var(--color-cream);
+  }
+  .landing-btn-outline:hover {
+    border-color: var(--color-gold);
+    color: var(--color-gold);
+  }
+  .landing-divider {
+    height: 1px;
+    background: linear-gradient(to right, transparent, rgb(215 181 109 / 0.5), transparent);
+  }
+}
+
+
+/* ------------------------------------------------------------------ */
+/* Landing warm terracotta (draft /landing-v2) — di-scope via          */
+/* .landing-terracotta agar tidak memengaruhi tema lain.               */
+/* ------------------------------------------------------------------ */
+@layer components {
+  .landing-terracotta {
+    background-color: var(--color-tc-cream);
+    color: var(--color-tc-charcoal);
+    font-family: var(--font-body);
+  }
+  .landing-terracotta h1,
+  .landing-terracotta h2,
+  .landing-terracotta h3 {
+    font-family: var(--font-editorial);
+    color: var(--color-tc-charcoal);
+    letter-spacing: -0.01em;
+  }
+  .landing-terracotta ::selection {
+    background: var(--color-tc-terracotta);
+    color: #fffdf9;
+  }
+  .landing-tc-eyebrow {
+    font-family: var(--font-body);
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--color-tc-terracotta);
+  }
+  .landing-tc-container {
+    margin-inline: auto;
+    width: 100%;
+    max-width: 76rem;
+    padding-inline: 1.25rem;
+  }
+  @media (min-width: 640px) {
+    .landing-tc-container { padding-inline: 2rem; }
+  }
+  .landing-tc-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 9999px;
+    font-weight: 600;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+    min-height: 3rem;
+    padding-inline: 1.75rem;
+  }
+  .landing-tc-btn:active { transform: scale(0.97); }
+  .landing-tc-btn-solid {
+    background: var(--color-tc-terracotta);
+    color: #fffdf9;
+  }
+  .landing-tc-btn-solid:hover { background: var(--color-tc-terracotta-deep); }
+  .landing-tc-btn-outline {
+    border: 1px solid rgb(41 37 34 / 0.35);
+    color: var(--color-tc-charcoal);
+  }
+  .landing-tc-btn-outline:hover {
+    border-color: var(--color-tc-terracotta);
+    color: var(--color-tc-terracotta);
+  }
+}
+
+
+/* ------------------------------------------------------------------ */
+/* Landing v3: animasi asap hangat (hero) + rotasi piring (about).     */
+/* ------------------------------------------------------------------ */
+@keyframes steam-rise {
+  0%   { transform: translate(0, 0) scale(0.6); opacity: 0; }
+  15%  { opacity: 0.55; }
+  60%  { opacity: 0.35; }
+  100% { transform: translate(var(--steam-drift, 14px), -110px) scale(1.6); opacity: 0; }
+}
+.landing-steam {
+  position: absolute;
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgb(255 255 255 / 0.35) 0%, rgb(255 255 255 / 0.12) 45%, transparent 70%);
+  filter: blur(10px);
+  animation: steam-rise 5s ease-out infinite;
+  pointer-events: none;
+}
+@keyframes plate-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.landing-plate-spin {
+  animation: plate-spin 12s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-steam { animation: none; opacity: 0; }
+  .landing-plate-spin { animation: none; }
 }
