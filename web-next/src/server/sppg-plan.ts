@@ -79,20 +79,23 @@ function toPlan(plan: BackendSppgPlan): SppgPlan {
   });
 }
 
-export async function buildSppgPlan(input: SppgPlanInput): Promise<SppgPlan> {
+export async function buildSppgPlan(input: SppgPlanInput, token?: string): Promise<SppgPlan> {
   const allergies = input.allergies.map(
     (item) => ALLERGY_MAP[item.trim().toLowerCase()] ?? item.trim().toLowerCase(),
   );
-  const result = await backendSppgRecommendation({
-    name: input.name,
-    region: input.region,
-    allergies,
-    groups: input.groups.map((group) => ({
-      level: group.level,
-      student_count: group.studentCount,
-      budget_per_portion: group.budgetPerPortion,
-    })),
-  });
+  const result = await backendSppgRecommendation(
+    {
+      name: input.name,
+      region: input.region,
+      allergies,
+      groups: input.groups.map((group) => ({
+        level: group.level,
+        student_count: group.studentCount,
+        budget_per_portion: group.budgetPerPortion,
+      })),
+    },
+    token,
+  );
   if (!result.sppg) throw new Error("Mesin tidak mengembalikan rencana SPPG.");
   return toPlan(result.sppg);
 }

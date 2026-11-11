@@ -23,7 +23,8 @@ const BodySchema = z.object({
 
 /** POST /api/recommendations/sppg — paket MBG per jenjang, anggaran BGN. */
 export async function POST(request: Request): Promise<NextResponse> {
-  const user = getUserByToken(getSessionToken(request));
+  const token = getSessionToken(request);
+  const user = getUserByToken(token);
   if (!user) return jsonError("Sesi tidak valid. Silakan masuk kembali.", 401);
   if (user.role !== "petugas_sppg" && user.role !== "admin") {
     return jsonError("Hanya Petugas SPPG yang dapat menyusun rencana massal.", 403);
@@ -43,7 +44,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     );
   }
   try {
-    return NextResponse.json(await buildSppgPlan(parsed.data));
+    return NextResponse.json(await buildSppgPlan(parsed.data, token ?? undefined));
   } catch (error) {
     return backendErrorResponse(error);
   }

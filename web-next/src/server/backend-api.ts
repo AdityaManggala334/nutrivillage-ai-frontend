@@ -1144,11 +1144,16 @@ export interface BackendFamilyResult {
 
 export async function backendFamilyRecommendation(
   input: BackendFamilyInput,
+  token?: string,
 ): Promise<BackendFamilyResult> {
-  return backendFetch<BackendFamilyResult>("/recommendations/keluarga?mode=komponen", {
-    method: "POST",
-    body: JSON.stringify(input),
-  });
+  return backendFetch<BackendFamilyResult>(
+    "/recommendations/keluarga?mode=komponen",
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    },
+    token,
+  );
 }
 
 export interface BackendSppgGroupInput {
@@ -1193,11 +1198,16 @@ export interface BackendSppgPlan {
 
 export async function backendSppgRecommendation(
   input: BackendSppgInput,
+  token?: string,
 ): Promise<{ sppg: BackendSppgPlan | null }> {
-  return backendFetch<{ sppg: BackendSppgPlan | null }>("/recommendations/sppg", {
-    method: "POST",
-    body: JSON.stringify(input),
-  });
+  return backendFetch<{ sppg: BackendSppgPlan | null }>(
+    "/recommendations/sppg",
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    },
+    token,
+  );
 }
 
 

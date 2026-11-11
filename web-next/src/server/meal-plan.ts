@@ -123,8 +123,8 @@ function toMealPlan(plan: BackendMealPlan): MealPlan {
   });
 }
 
-/** Susun rencana paket makan keluarga dari parameter Explore. */
-export async function buildMealPlan(data: ExploreFormData): Promise<MealPlan> {
+/** Susun rencana paket makan keluarga. `token` = JWT sesi; endpoint mesin butuh login (FR-01 revisi). */
+export async function buildMealPlan(data: ExploreFormData, token?: string): Promise<MealPlan> {
   const allergies = data.allergies
     .map((item) => ALLERGY_MAP[item.trim().toLowerCase()] ?? item.trim().toLowerCase())
     .filter(Boolean);
@@ -149,15 +149,18 @@ export async function buildMealPlan(data: ExploreFormData): Promise<MealPlan> {
     .map((item) => PREFERENCE_MAP[item.trim().toLowerCase()] ?? item.trim().toLowerCase())
     .filter(Boolean);
 
-  const result = await backendFamilyRecommendation({
-    daily_budget: data.dailyBudget,
-    region: data.location,
-    meals_per_day: data.mealsPerDay,
-    include_susu: data.includeSusu && !allergies.includes("susu"),
-    preferences,
-    avoided_ingredients: [],
-    members,
-  });
+  const result = await backendFamilyRecommendation(
+    {
+      daily_budget: data.dailyBudget,
+      region: data.location,
+      meals_per_day: data.mealsPerDay,
+      include_susu: data.includeSusu && !allergies.includes("susu"),
+      preferences,
+      avoided_ingredients: [],
+      members,
+    },
+    token,
+  );
   if (!result.keluarga) {
     throw new Error("Mesin rekomendasi tidak mengembalikan rencana keluarga.");
   }

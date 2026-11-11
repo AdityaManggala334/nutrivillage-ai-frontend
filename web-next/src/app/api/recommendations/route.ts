@@ -14,7 +14,8 @@ export async function POST(request: Request): Promise<NextResponse> {
   if (!parsed.ok) return parsed.response;
 
   // FR-35: rate limiting per sesi (user) atau per alamat IP untuk tamu.
-  const user = getUserByToken(getSessionToken(request));
+  const token = getSessionToken(request);
+  const user = getUserByToken(token);
   const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
   const quotaKey = user ? `user:${user.id}` : `ip:${forwarded ?? "lokal"}`;
   const quota = consumeGenerateQuota(quotaKey);
@@ -37,7 +38,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 
   let recommendations: Awaited<ReturnType<typeof buildMealPlan>>;
   try {
-    recommendations = await buildMealPlan(parsed.data);
+    recommendations = await buildMealPlan(parsed.data, token ?? undefined);
   } catch (error) {
     // Generate yang gagal (backend mati/500) tidak boleh menghapus kuota.
     refundGenerateQuota(quotaKey);
