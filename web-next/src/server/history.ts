@@ -6,6 +6,7 @@ import type { HistoryEntry } from "@/schemas/domain";
 import {
   BackendError,
   backendDeleteHistory,
+  backendGetHistoryByRecipe,
   backendListHistory,
   backendSaveHistory,
   backendSetHistoryFavorite,
@@ -76,6 +77,15 @@ export async function setHistoryFavorite(id: string, favorite: boolean): Promise
   const mapped = toHistoryEntry(entry);
   if (!mapped) throw new BackendError("Resep tidak ditemukan.", 404);
   return mapped;
+}
+
+/** Entri riwayat user untuk satu resep (null = belum pernah disimpan). */
+export async function getHistoryByRecipe(
+  recipeId: string,
+): Promise<HistoryEntry | null> {
+  const token = await sessionToken();
+  const entry = await backendGetHistoryByRecipe(token, recipeId);
+  return entry ? toHistoryEntry(entry) : null;
 }
 
 /** Toggle favorit (dipakai tombol bintang di UI). */

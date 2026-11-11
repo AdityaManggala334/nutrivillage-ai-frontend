@@ -153,8 +153,10 @@ export async function buildMealPlan(data: ExploreFormData, token?: string): Prom
     {
       daily_budget: data.dailyBudget,
       region: data.location,
-      meals_per_day: data.mealsPerDay,
+      meals_per_day: data.mealSlots.length,
+      meal_slots: data.mealSlots,
       include_susu: data.includeSusu && !allergies.includes("susu"),
+      goal: data.goal,
       preferences,
       avoided_ingredients: [],
       members,

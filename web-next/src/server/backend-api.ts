@@ -712,6 +712,21 @@ export async function backendDeleteHistory(token: string, id: number | string): 
   await backendFetch<undefined>(`/history/${id}`, { method: "DELETE" }, token);
 }
 
+export async function backendGetHistoryByRecipe(
+  token: string, recipeId: string,
+): Promise<BackendHistoryEntry | null> {
+  try {
+    return await backendFetch<BackendHistoryEntry | null>(
+      `/history/by-recipe/${recipeId}`,
+      { method: "GET" },
+      token,
+    );
+  } catch (error) {
+    if (error instanceof BackendError && error.status === 404) return null;
+    throw error;
+  }
+}
+
 export async function backendSetHistoryFavorite(
   token: string,
   id: number | string,
@@ -1033,7 +1048,10 @@ export interface BackendFamilyInput {
   readonly daily_budget: number;
   readonly region: string;
   readonly meals_per_day: number;
+  /** FR-05 revisi: slot waktu makan pilihan pengguna (opsional). */
+  readonly meal_slots?: string[];
   readonly include_susu: boolean;
+  readonly goal?: string;
   readonly preferences: string[];
   readonly avoided_ingredients: string[];
   readonly members: BackendFamilyMemberInput[];

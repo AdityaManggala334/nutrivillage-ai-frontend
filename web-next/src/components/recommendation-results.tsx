@@ -9,14 +9,11 @@ import type { ExploreFormData } from "@/schemas/explore";
 
 export interface RecommendationResultsProps {
   readonly payload: ExploreFormData | null;
-  /** B4: tampilkan aksi simpan per komponen (Explore, bukan dashboard). */
-  readonly showSaveAction?: boolean;
 }
 
 /** FR-10: area hasil paket makan (satu paket per waktu makan). */
 export function RecommendationResults({
   payload,
-  showSaveAction = false,
 }: RecommendationResultsProps) {
   const { data, isPending, isError, error, refetch, isFetching } = useRecommendations(payload);
 
@@ -59,5 +56,5 @@ export function RecommendationResults({
   }
 
   if (!data) return null;
-  return <MealPlanResults plan={data} showSaveAction={showSaveAction} />;
+  return <MealPlanResults plan={data} />;
 }

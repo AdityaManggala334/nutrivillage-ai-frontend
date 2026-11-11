@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { PlanExplanation } from "@/components/plan-explanation";
 import { AlertTriangle, CheckCircle2, Leaf, Plus } from "lucide-react";
 import { Badge, Button } from "@/components/ui";
-import { SaveRecipeButton } from "@/components/save-recipe-button";
 import { formatRupiah } from "@/lib/utils";
 import type { MealItem, MealPlan } from "@/schemas/meal-plan";
 
@@ -34,8 +34,6 @@ export interface MealPlanResultsProps {
   readonly compact?: boolean;
   /** Bila diisi, tiap komponen punya tombol "Rencanakan". */
   readonly onPlanItem?: (item: MealItem) => void;
-  /** B4: tampilkan tombol simpan ke riwayat pada tiap komponen. */
-  readonly showSaveAction?: boolean;
 }
 
 /** FR-10: hasil berupa PAKET makan per waktu, lengkap dengan biaya & peringatan. */
@@ -43,7 +41,6 @@ export function MealPlanResults({
   plan,
   compact = false,
   onPlanItem,
-  showSaveAction = false,
 }: MealPlanResultsProps) {
   if (plan.status === "infeasible") {
     return (
@@ -172,14 +169,6 @@ export function MealPlanResults({
                       <Plus className="size-3.5" aria-hidden="true" />
                     </Button>
                   ) : null}
-                  {showSaveAction ? (
-                    <SaveRecipeButton
-                      recipeId={String(item.recipeId)}
-                      kind="recommendation"
-                      compact
-                      allowRepeat
-                    />
-                  ) : null}
                 </li>
               ))}
             </ul>
@@ -229,6 +218,7 @@ export function MealPlanResults({
           </ul>
         </details>
       ) : null}
+      {!compact ? <PlanExplanation plan={plan} /> : null}
     </div>
   );
 }

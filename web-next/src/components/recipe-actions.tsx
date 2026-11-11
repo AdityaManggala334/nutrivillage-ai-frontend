@@ -2,6 +2,7 @@
 
 import { CalendarPlus, ShoppingCart } from "lucide-react";
 import { useState } from "react";
+import { FavoriteToggleButton } from "@/components/favorite-toggle-button";
 import { SaveRecipeButton } from "@/components/save-recipe-button";
 import { Button, Label, Select } from "@/components/ui";
 import {
@@ -63,6 +64,7 @@ export function RecipeActions({ recipeId, recipeName }: RecipeActionsProps) {
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2">
         <SaveRecipeButton recipeId={recipeId} />
+        <FavoriteToggleButton recipeId={recipeId} />
         <Button
           intent="harvest"
           size="sm"

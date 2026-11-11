@@ -22,6 +22,7 @@ import { MealPlanResults } from "@/components/meal-plan-results";
 import { useRecommendations } from "@/hooks/use-recommendations";
 import { useProfile } from "@/hooks/use-profile";
 import { useSession } from "@/hooks/use-session";
+import { MEAL_SLOT_OPTIONS } from "@/schemas/explore";
 import { formatRupiah } from "@/lib/utils";
 import type { ExploreFormData } from "@/schemas/explore";
 import type { FamilyProfile } from "@/schemas/profile";
@@ -29,6 +30,8 @@ import type { FamilyProfile } from "@/schemas/profile";
 const toPayload = (profile: FamilyProfile): ExploreFormData => ({
   dailyBudget: profile.dailyBudget,
   goal: "seimbang",
+  // Dashboard memakai slot default (n pertama) sesuai mealsPerDay profil.
+  mealSlots: MEAL_SLOT_OPTIONS.map((o) => o.value).slice(0, Math.min(Math.max(profile.mealsPerDay, 1), 5)),
   members: profile.members.map((member) => ({
     name: member.name,
     age: member.age,

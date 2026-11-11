@@ -29,6 +29,12 @@ export const ExploreFormSchema = z
     allergies: z.array(z.string().min(1)),
     location: z.string().min(1, "Lokasi wajib diisi"),
     mealsPerDay: z.coerce.number().int().min(1).max(5).default(3),
+    /** FR-05 revisi: slot waktu makan pilihan pengguna (1-5, urut waktu). */
+    mealSlots: z
+      .array(z.enum(["sarapan", "selingan_pagi", "makan_siang", "selingan_sore", "makan_malam"]))
+      .min(1, "Pilih minimal satu waktu makan")
+      .max(5)
+      .default(["sarapan", "makan_siang", "makan_malam"]),
     includeSusu: z.boolean().default(true),
   })
   ;
@@ -37,6 +43,16 @@ export type ExploreFormInput = z.input<typeof ExploreFormSchema>;
 export type ExploreFormData = z.output<typeof ExploreFormSchema>;
 
 export const totalMembers = (members: readonly unknown[]): number => members.length;
+
+/** FR-05 revisi: opsi slot waktu makan (urut waktu, label tampilan). */
+export const MEAL_SLOT_OPTIONS = [
+  { value: "sarapan", label: "Sarapan" },
+  { value: "selingan_pagi", label: "Selingan Pagi" },
+  { value: "makan_siang", label: "Makan Siang" },
+  { value: "selingan_sore", label: "Selingan Sore" },
+  { value: "makan_malam", label: "Makan Malam" },
+] as const;
+export type MealSlotValue = (typeof MEAL_SLOT_OPTIONS)[number]["value"];
 
 /** Label opsi checkbox preferensi & alergi di form Explore. */
 export const PREFERENCE_OPTIONS = [

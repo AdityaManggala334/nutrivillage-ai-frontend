@@ -36,7 +36,7 @@ export function ExploreClient() {
         <ExploreForm onGenerate={setPayload} isLoading={payload !== null && fetchingCount > 0} />
       </div>
       <div className="min-w-0">
-        <RecommendationResults payload={payload} showSaveAction />
+        <RecommendationResults payload={payload} />
       </div>
     </div>
   );

@@ -10,10 +10,12 @@ import {
   ALLERGY_OPTIONS,
   ExploreFormSchema,
   ExploreMemberSchema,
+  MEAL_SLOT_OPTIONS,
   PREFERENCE_OPTIONS,
   totalMembers,
   type ExploreFormData,
   type ExploreMember,
+  type MealSlotValue,
 } from "@/schemas/explore";
 import type { ActivityLevel, Gender } from "@/schemas/profile";
 
@@ -175,7 +177,7 @@ export function ExploreForm({ onGenerate, isLoading }: ExploreFormProps) {
   const [preferences, setPreferences] = useState<string[]>(["Sayur"]);
   const [allergies, setAllergies] = useState<string[]>([]);
   const [location, setLocation] = useState("Kabupaten Madiun");
-  const [mealsPerDay, setMealsPerDay] = useState("3");
+  const [mealSlots, setMealSlots] = useState<MealSlotValue[]>(["sarapan", "makan_siang", "makan_malam"]);
   const [includeSusu, setIncludeSusu] = useState(true);
   const [errors, setErrors] = useState<FormErrors>({});
   const [dialog, setDialog] = useState<{ index: number | null; draft: MemberDraft } | null>(null);
@@ -205,7 +207,9 @@ export function ExploreForm({ onGenerate, isLoading }: ExploreFormProps) {
     setPreferences(profile.preferences);
     setAllergies(profile.avoidedIngredients);
     setLocation(profile.region);
-    setMealsPerDay(String(profile.mealsPerDay));
+    // Profil tidak menyimpan slot; gunakan default + mealsPerDay profil sebagai jumlah slot pertama.
+    const semuaSlot = MEAL_SLOT_OPTIONS.map((o) => o.value);
+    setMealSlots(semuaSlot.slice(0, Math.min(Math.max(profile.mealsPerDay, 1), 5)));
     setIncludeSusu(profile.includeSusu);
     setErrors({});
   };
@@ -227,7 +231,8 @@ export function ExploreForm({ onGenerate, isLoading }: ExploreFormProps) {
       preferences,
       allergies,
       location,
-      mealsPerDay,
+      mealsPerDay: String(mealSlots.length),
+      mealSlots,
       includeSusu,
     };
     const result = ExploreFormSchema.safeParse(candidate);
@@ -316,10 +321,39 @@ export function ExploreForm({ onGenerate, isLoading }: ExploreFormProps) {
           <p className="text-xs text-stone-500">{GOAL_DESCRIPTIONS[goal]}</p>
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="meals">Makan per hari</Label>
-          <Input id="meals" type="number" min={1} max={5} value={mealsPerDay} onChange={(event) => setMealsPerDay(event.target.value)} />
+          <Label>Waktu makan (pilih 1–5)</Label>
+          <div className="flex flex-wrap gap-2">
+            {MEAL_SLOT_OPTIONS.map((option) => {
+              const active = mealSlots.includes(option.value);
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() =>
+                    setMealSlots((current) =>
+                      current.includes(option.value)
+                        ? current.filter((item) => item !== option.value)
+                        : current.length >= 5
+                          ? current
+                          : [...current, option.value],
+                    )
+                  }
+                  className={cn(
+                    "rounded-full border px-3 py-1.5 text-xs font-medium",
+                    active
+                      ? "border-brand-500 bg-brand-50 text-brand-800 dark:bg-brand-950/40 dark:text-brand-200"
+                      : "border-stone-300 text-stone-600 hover:border-brand-400 dark:border-stone-700",
+                  )}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+          <FieldError>{errors.mealSlots}</FieldError>
           <p className="text-xs text-stone-500">
-            1–5 waktu makan penuh; semuanya dihitung ke kebutuhan gizi harian.
+            Anggaran &amp; target gizi dibagi rata: 100% &divide; jumlah waktu makan terpilih.
           </p>
         </div>
         <div className="flex flex-col gap-1.5">
@@ -363,7 +397,7 @@ export function ExploreForm({ onGenerate, isLoading }: ExploreFormProps) {
       <Button type="submit" size="lg" fullWidth loading={isLoading} disabled={members.length === 0}>
         <Sparkles className="size-4" /> Generate Rekomendasi
       </Button>
-      <p className="text-center text-xs text-stone-500">{totalMembers(members)} anggota · {mealsPerDay} kali makan/hari</p>
+          <p className="text-center text-xs text-stone-500">{totalMembers(members)} anggota &middot; {mealSlots.length} waktu makan/hari</p>
 
       {dialog ? <MemberDialog draft={dialog.draft} onSave={simpanAnggota} onClose={() => setDialog(null)} /> : null}
     </form>
