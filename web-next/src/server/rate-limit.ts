@@ -45,3 +45,9 @@ export function consumeGenerateQuota(key: string): QuotaResult {
     resetAt: bucket.resetAt,
   };
 }
+
+/** Kembalikan satu kuota saat generate gagal — kegagalan server tidak boleh menghapus kuota pengguna. */
+export function refundGenerateQuota(key: string): void {
+  const bucket = buckets.get(key);
+  if (bucket && bucket.count > 0) bucket.count -= 1;
+}

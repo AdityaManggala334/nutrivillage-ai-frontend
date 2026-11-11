@@ -192,7 +192,8 @@ export function getUserByToken(token: string | null): User | null {
   // B7 (FR-01 revisi): token tamu lokal (`nv-...`) tetap dikenali agar UI tahu
   // pengguna adalah tamu; backend FastAPI sendiri menolaknya dengan 401.
   if (token.startsWith("nv-")) {
-    return getUserById("user-guest");
+    const guest = usersById.get("user-guest");
+    return guest ? toUser(guest) : null;
   }
 
   // Sesi backend (JWT).
