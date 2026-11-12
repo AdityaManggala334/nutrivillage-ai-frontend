@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 /** Sama dengan batas backend (app/services/dataset_import.py). */
 const MAKS_MB = 10;
-const MAKS_JUMLAH = 7;
+const MAKS_JUMLAH = 8;
 
 /** POST /api/admin/import — teruskan unggahan CSV ke backend (khusus admin). */
 export async function POST(request: Request): Promise<NextResponse> {

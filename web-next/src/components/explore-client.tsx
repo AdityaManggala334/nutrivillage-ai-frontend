@@ -6,7 +6,7 @@ import { ExploreLockedPanel } from "@/components/explore-locked-panel";
 import { RecommendationResults } from "@/components/recommendation-results";
 import { useSession } from "@/hooks/use-session";
 import { queryKeys } from "@/lib/query-keys";
-import { useExploreHydration, useExploreStore } from "@/stores/explore-store";
+import { useExploreStore } from "@/stores/explore-store";
 
 /**
  * Komponen klien tipis untuk halaman Explore. Memisahkan form (Client UI State
@@ -19,7 +19,6 @@ import { useExploreHydration, useExploreStore } from "@/stores/explore-store";
  * dibuka supaya tamu paham apa yang akan didapat setelah daftar.
  */
 export function ExploreClient() {
-  useExploreHydration();
   const { data: user, isPending } = useSession();
   const tamu = !isPending && (!user || user.role === "guest");
   const payload = useExploreStore((state) => state.payload);

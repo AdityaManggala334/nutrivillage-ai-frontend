@@ -9,13 +9,13 @@ import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label, Select 
 // Cerminan konstanta backend (app/services/dataset_import.py). Backend tetap
 // yang memutuskan; angka ini hanya supaya batas terlihat sebelum mencoba.
 const MAKS_MB = 10;
-const MAKS_JUMLAH = 7;
+const MAKS_JUMLAH = 8;
 
 export function AdminImport() {
   const [region, setRegion] = useState("Kabupaten Madiun");
   const [files, setFiles] = useState<FileList | null>(null);
   const [loading, setLoading] = useState<"preview" | "apply" | null>(null);
-  const [report, setReport] = useState<string | null>(null);
+  const [report, setReport] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const kirim = async (terapkan: boolean) => {
@@ -49,7 +49,7 @@ export function AdminImport() {
         | { message?: string; [key: string]: unknown }
         | null;
       if (!response.ok) throw new Error(data?.message ?? "Impor gagal.");
-      setReport(JSON.stringify(data, null, 2));
+      setReport(data ?? {});
     } catch (err) {
       setError(err instanceof Error ? err.message : "Impor gagal.");
     } finally {
@@ -86,8 +86,8 @@ export function AdminImport() {
               onChange={(event) => setFiles(event.target.files)}
             />
             <p className="text-xs text-stone-500">
-              Pilih berkas 01 sampai 07 sekaligus (maks {MAKS_JUMLAH} berkas, {MAKS_MB} MB
-              per berkas). Berkas 08/09/11 diabaikan.
+              Pilih berkas 01 sampai 07 plus 10 (antropometri) sekaligus (maks{" "}
+              {MAKS_JUMLAH} berkas, {MAKS_MB} MB per berkas). Berkas 08/09/11 diabaikan.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -112,9 +112,37 @@ export function AdminImport() {
               <Loader2 className="size-4 animate-spin" /> Memproses…
             </p>
           ) : report ? (
-            <pre className="max-h-[28rem] overflow-auto rounded-xl bg-stone-900 p-4 text-xs text-stone-100">
-              {report}
-            </pre>
+            <div className="space-y-3">
+              {(() => {
+                const harga = report.harga as
+                  | { approved?: number; pending?: number; rejected?: number;
+                      bahan_tanpa_harga?: number; contoh_bahan_tanpa_harga?: string[] }
+                  | undefined;
+                if (!harga) return null;
+                return (
+                  <div className="rounded-xl border border-stone-200 p-3 text-sm dark:border-stone-700">
+                    <p className="font-medium">
+                      Harga disetujui: {harga.approved ?? 0} · menunggu: {harga.pending ?? 0} · ditolak: {harga.rejected ?? 0}
+                    </p>
+                    {harga.bahan_tanpa_harga ? (
+                      <p className="mt-1 text-red-600">
+                        {harga.bahan_tanpa_harga} bahan dipakai menu belum punya harga disetujui
+                        {harga.contoh_bahan_tanpa_harga?.length
+                          ? `: ${harga.contoh_bahan_tanpa_harga.join(", ")}`
+                          : ""}. Lengkapi di halaman Verifikasi Harga.
+                      </p>
+                    ) : (
+                      <p className="mt-1 text-emerald-700">
+                        Semua bahan yang dipakai menu sudah punya harga disetujui.
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
+              <pre className="max-h-[28rem] overflow-auto rounded-xl bg-stone-900 p-4 text-xs text-stone-100">
+                {JSON.stringify(report, null, 2)}
+              </pre>
+            </div>
           ) : (
             <p className="text-sm text-stone-500">
               Pratinjau menampilkan jumlah baris yang akan dibuat/diperbarui tanpa menulis ke database.
